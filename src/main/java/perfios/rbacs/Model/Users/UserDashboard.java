@@ -8,5 +8,5 @@ public class UserDashboard
 {
     private int userId;
     private String userEmail;
-    private int roleId;
+    private String roleName;
 }

@@ -1,12 +1,10 @@
 package perfios.rbacs.Repository.UserRepository;
-
 import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestParam;
 import perfios.rbacs.Model.Users.User;
 import perfios.rbacs.Model.Users.UserDashboard;
 import perfios.rbacs.RbacsApplication;
-
 import javax.annotation.processing.Generated;
 import javax.sql.DataSource;
 import javax.xml.crypto.Data;
@@ -15,33 +13,39 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 @Service
 public class UserServiceImplementation implements UserService{
 
-    public static String userDashboardQuery = "SELECT ud.user_id, ud.user_email, utr.role_id from user_details ud, user_to_role utr WHERE ud.user_id = utr.user_id;";
-    public static String addUserDetailQuery = "INSERT INTO user_details (status, user_email, user_first_name, user_last_name, user_password, user_phone_number) VALUES ( ?, ?, ?, ?, ?, ?);";
-    public static String checkExistingUserQuery = "select user_id from user_details where user_email = ?;";
-    public static String addUserRoleQuery = "insert into user_to_role(user_id,role_id) values(?,?);";
-    public static String getAllUsersQuery = "select ud.user_id, ud.user_first_name, ud.user_last_name, ud.user_email, ud.user_password, ud.status, ud.user_phone_number,utr.role_id from user_details ud, user_to_role utr where ud.user_id = utr.user_id; ";
-    public static String deleteUserInUserDetailsQuery = "delete from user_details where user_id = ?; ";
-    public static String deleteUserInUserToRoleQuery =  "delete from user_to_role where user_id = ?;";
-    public static String deleteUserRoleQuery = "delete from user_to_role where user_id = ? and role_id = ?";
-    public static String addNewRoleToExistingUserQuery = "insert into user_to_role(user_id,role_id) values (?,?)";
-    public static String updateInUserDetailsQuery = "update user_details set status = ?, user_email = ?, user_first_name = ?, user_last_name = ?, user_password = ?, user_phone_number = ? where user_id = ?;";
 
+    private static String userDashboardQuery = "SELECT ud.user_id, ud.user_email, utr.role_id from user_details ud, user_to_role utr WHERE ud.user_id = utr.user_id;";
+    private static String addUserDetailQuery = "INSERT INTO user_details (status, user_email, user_first_name, user_last_name, user_password, user_phone_number) VALUES ( ?, ?, ?, ?, ?, ?);";
+    private static String checkExistingUserQuery = "select user_id from user_details where user_email = ?;";
+    private static String addUserRoleQuery = "insert into user_to_role(user_id,role_id) values(?,?);";
+    private static String getAllUsersQuery = "select ud.user_id, ud.user_first_name, ud.user_last_name, ud.user_email, ud.user_password, ud.status, ud.user_phone_number,utr.role_id from user_details ud, user_to_role utr where ud.user_id = utr.user_id; ";
+    private static String deleteUserInUserDetailsQuery = "delete from user_details where user_id = ?; ";
+    private static String deleteUserInUserToRoleQuery =  "delete from user_to_role where user_id = ?;";
+    private static String deleteUserRoleQuery = "delete from user_to_role where user_id = ? and role_id = ?";
+    private static String addNewRoleToExistingUserQuery = "insert into user_to_role(user_id,role_id) values (?,?)";
+    private static String updateInUserDetailsQuery = "update user_details set status = ?, user_email = ?, user_first_name = ?, user_last_name = ?, user_password = ?, user_phone_number = ? where user_id = ?;";
+    private static String checkNumberOfRolesAssociatedWithUserQuery = "select count(*) from user_to_role where user_id = ?;";
+    private static String fetchRoleIdAndRoleNameQuery = "select role_id,role_name from role_details";
 
 
 
     //datasource object for connection pooling with JDBC
     private final DataSource dataSource;
 
+    //this constructor injects DatasSource object into above created datasource with help of springBoot IOC container.
     public UserServiceImplementation(DataSource dataSource){
         this.dataSource = dataSource;
     }
 
 
+    //function to display list of users with their roles, if one user have multiple role then it will return separate row for that.
+    //one row with first role, another row with second role and so on.
     @Override
     public List<User> getAllUsers() {
         try{
@@ -68,6 +72,7 @@ public class UserServiceImplementation implements UserService{
         return null;
     }
 
+
     //this function is to add a row in user_to_role table.
     public int addUserToRole(int user_id, int role_id) {
         try {
@@ -75,9 +80,8 @@ public class UserServiceImplementation implements UserService{
             PreparedStatement statement2 = connection.prepareStatement(addUserRoleQuery);
             statement2.setInt(1, user_id);
             statement2.setInt(2, role_id);
-            RbacsApplication.check1();
             RbacsApplication.check3(user_id,role_id);
-            return statement2.executeUpdate();
+            return statement2.executeUpdate();  //this returns int, if 1 => means user with that role saved, else check inputs.
         }catch (SQLException e){
             System.err.println(e.getMessage());
         }
@@ -86,14 +90,22 @@ public class UserServiceImplementation implements UserService{
 
 
 
-    //this function is for adding new and existing users..
+    //this function is for adding new and existing users with new role..
+    //if an user is already added with role 1, second time it will only update in user_to_role table.
+    //so there will be no duplicate entry for same user in user_detals table.
     @Override
     public String addUser(User user) {
         try {
             Connection connection = dataSource.getConnection();
-            PreparedStatement statement = connection.prepareStatement(checkExistingUserQuery); //this statement is for checking user already
-            //exist in table or not, if exist then we will update only in user to role talbe, else we will add user first in user table
-            // and then add in user to role table accordingly.
+            PreparedStatement statement = connection.prepareStatement(checkExistingUserQuery); //this statement is for checking user
+            // already exist in table or not, if exist then we will update only in user to role talbe, else we will add user first
+            // in user table and then add in user to role table accordingly.
+
+            //if a user is already exist in user_details table, and now we are adding it again with a different role,
+            //so with help of user's email, we are cheking it. if email id is already there in user table then only
+            //we can assign it new role and make a new entry in user_to_role table.
+            //if we add new user with same email, it won't allow to add more than one user with same email.
+
             statement.setString(1,user.getUserEmail());
             ResultSet check = statement.executeQuery();
 
@@ -119,7 +131,7 @@ public class UserServiceImplementation implements UserService{
             statement.setString(5, user.getUserPassword()); // userPassword
             statement.setString(6, user.getUserPhoneNumber()); // userPhoneNumber
             int rowsAffected = statement.executeUpdate(); //adding details into user table, user_id is automatically generating here.
-            //now user is added to user table, ab w.r.t role, adding in user to role table
+            //now user is added to user table, ab w.r.t role, adding in user_to_role table
             if(rowsAffected == 0) return "adding user failed";
             int autogeneratedUserId = 0;
             try{
@@ -144,8 +156,27 @@ public class UserServiceImplementation implements UserService{
     }
 
 
+    public int checkNumberOfRolesAssociatedWithUser(int user_id){
+        try{
+            Connection connection = dataSource.getConnection();
+            PreparedStatement statement = connection.prepareStatement(checkNumberOfRolesAssociatedWithUserQuery);
+            statement.setInt(1,user_id);
+            ResultSet countOfRoles = statement.executeQuery();
+            countOfRoles.next();
+            int rowsAffected = countOfRoles.getInt("count(*)");
+            return rowsAffected;
+        }catch (SQLException e){
+            System.err.println(e.getMessage());
+        }
+        return 0;
+    }
+
+
     @Override
     public String unassignUserRole(int user_id, int role_id){
+        int checkNumberOfRolesUserHad = checkNumberOfRolesAssociatedWithUser(user_id);
+        if(checkNumberOfRolesUserHad == 0) return "user did not exist";
+        if(checkNumberOfRolesUserHad == 1) return "user must have atleast one role, cannot unassign given role to user";
         try{
             Connection connection = dataSource.getConnection();
             PreparedStatement preparedStatement = connection.prepareStatement(deleteUserRoleQuery);
@@ -201,6 +232,8 @@ public class UserServiceImplementation implements UserService{
         return "operation failed";
     }
 
+
+    //this function is to delete user
     @Override
     public String deleteUser(int id) {
         try{
@@ -221,18 +254,28 @@ public class UserServiceImplementation implements UserService{
         return "user did not deleted";
     }
 
+
+    //this functino is for return user list for the dashborad.
+    //a hashmap is created here whenever the query is fired, it adds role_id and role_name in it
+    // and then returns role_name from hashmap. so we dont want to read from table(roles) for every entry.
     @Override
     public List<UserDashboard> getAllUserDashboard(){
         try{
             Connection connection = dataSource.getConnection();
             PreparedStatement preparedStatement = connection.prepareStatement(userDashboardQuery);
             ResultSet resultSet = preparedStatement.executeQuery();
+            preparedStatement = connection.prepareStatement(fetchRoleIdAndRoleNameQuery);
+            ResultSet roleIdRoleName = preparedStatement.executeQuery();
+            HashMap<Integer,String> roleDetails = new HashMap<>();
+            while (roleIdRoleName.next()){
+                roleDetails.put(roleIdRoleName.getInt("role_id"),roleIdRoleName.getString("role_name"));
+            }
             List<UserDashboard> userDashboardList  = new ArrayList<>();
             while(resultSet.next()){
                 UserDashboard userDashboard = new UserDashboard();
                 userDashboard.setUserEmail(resultSet.getString("user_email"));
                 userDashboard.setUserId(resultSet.getInt("user_id"));
-                userDashboard.setRoleId(resultSet.getInt("role_id"));
+                userDashboard.setRoleName(roleDetails.get(resultSet.getInt("role_id")));
                 userDashboardList.add(userDashboard);
             }
             return userDashboardList;
@@ -241,5 +284,11 @@ public class UserServiceImplementation implements UserService{
         }
         return null;
     }
+
+
+
+
+
+
 
 }

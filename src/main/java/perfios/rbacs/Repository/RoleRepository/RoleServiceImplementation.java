@@ -7,10 +7,7 @@ import perfios.rbacs.Model.Roles.Role;
 import perfios.rbacs.RbacsApplication;
 
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.SimpleTimeZone;
+import java.util.*;
 //import perfios.rbacs.Config.JDBCConfig;
 
 import javax.sql.DataSource;
@@ -34,13 +31,13 @@ public class RoleServiceImplementation implements RoleService{
     private static String getRolePermissionQuery = "select permission_id,role_id from role_to_permission;";
     private static String saveRolePermissionQuery = "insert into role_to_permission(role_id,permission_id) values(?,?);";
     private static String deleteRolePermissionQuery= "delete from role_to_permission where role_id = ? and permission_id = ?;";
-
+    private static String getPermissionIdPermissionNameQuery = "select permission_id,permission_name from permission;";
+    private static String getPermissionForParticularRoleQuery = "SELECT permission.permission_name FROM permission WHERE permission.permission_id IN (SELECT permission_id FROM role_to_permission WHERE role_id = ?);";
     @Override
     public List<Role> getAllRoles() {
         try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(getStatement);
              ResultSet resultSet = statement.executeQuery()) {
-
             List<Role> roles = new ArrayList<>();
             while (resultSet.next()) {
                 Role role = new Role();
@@ -55,6 +52,28 @@ public class RoleServiceImplementation implements RoleService{
         }
         return Collections.emptyList();
     }
+
+    @Override
+    public List<String> getPermissionForParticularRole(int role_id){
+        try{
+            Connection connection = dataSource.getConnection();
+            PreparedStatement statement = connection.prepareStatement(getPermissionForParticularRoleQuery);
+            statement.setInt(1,role_id);
+            ResultSet permissionListResultSet = statement.executeQuery();
+            List<String> permissionList = new ArrayList<>();
+            while(permissionListResultSet.next()){
+                permissionList.add(permissionListResultSet.getString("permission_name"));
+            }
+            return permissionList;
+        }
+        catch (SQLException e){
+            System.err.println(e.getMessage());
+        }
+        return null;
+    }
+
+
+
 
     @Override
     public String saveRole(Role role) {
@@ -117,10 +136,25 @@ public class RoleServiceImplementation implements RoleService{
                 PreparedStatement statement = connection.prepareStatement(getRolePermissionQuery);
                 ResultSet resultSet = statement.executeQuery();
                 List<RoleToPermission> roleToPermissionList = new ArrayList<>();
+                HashMap<Integer,String> roleIdRoleName = new HashMap<Integer, String>();
+                HashMap<Integer,String> permissionIdPermissionName = new HashMap<Integer, String>();
+                PreparedStatement roleIdRoleNameData = connection.prepareStatement(getStatement);
+                ResultSet roleDetails = roleIdRoleNameData.executeQuery();
+                while(roleDetails.next()){
+                    roleIdRoleName.put(roleDetails.getInt("role_id"),roleDetails.getString("role_name"));
+                }
+                PreparedStatement permissionIdpermissionNameData = connection.prepareStatement(getPermissionIdPermissionNameQuery);
+                ResultSet permissionDetails = permissionIdpermissionNameData.executeQuery();
+                while(permissionDetails.next())
+                {
+                    permissionIdPermissionName.put(permissionDetails.getInt("permission_id"),permissionDetails.getString("permission_name"));
+                }
                 while(resultSet.next()){
                     RoleToPermission roleToPermission = new RoleToPermission();
                     roleToPermission.setPermissionId(resultSet.getInt("permission_id"));
                     roleToPermission.setRoleId(resultSet.getInt("role_id"));
+                    roleToPermission.setPermissionName(permissionIdPermissionName.get(resultSet.getInt("permission_id")));
+                    roleToPermission.setRoleName(roleIdRoleName.get(resultSet.getInt("role_id")));
                     roleToPermissionList.add(roleToPermission);
                 }
                 return roleToPermissionList;

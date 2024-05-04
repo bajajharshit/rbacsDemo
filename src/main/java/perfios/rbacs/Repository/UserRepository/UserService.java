@@ -15,4 +15,6 @@ public interface UserService {
     String deleteUser(int id);
     String unassignUserRole(int user_id, int role_id);
     String addNewRoleToExistingUser(int user_id, int role_id);
+
+    User getParticularUserById(int id);
 }

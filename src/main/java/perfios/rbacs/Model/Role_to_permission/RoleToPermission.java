@@ -6,4 +6,6 @@ import lombok.Data;
 public class RoleToPermission {
     private int roleId;
     private int permissionId;
+    private String roleName;
+    private String permissionName;
 }

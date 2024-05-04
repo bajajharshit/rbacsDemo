@@ -11,5 +11,6 @@ public class User {
     private String userPhoneNumber;
     private String userStatus;
     private String userEmail;
+    private String userRoleName;
     private int userRoleId;
 }

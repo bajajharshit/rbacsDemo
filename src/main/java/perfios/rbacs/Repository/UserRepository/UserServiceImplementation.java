@@ -1,6 +1,7 @@
 package perfios.rbacs.Repository.UserRepository;
 import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import perfios.rbacs.Model.Users.User;
 import perfios.rbacs.Model.Users.UserDashboard;
@@ -20,20 +21,21 @@ import java.util.List;
 public class UserServiceImplementation implements UserService{
 
 
-    private static String userDashboardQuery = "SELECT ud.user_id, ud.user_email, utr.role_id from user_details ud, user_to_role utr WHERE ud.user_id = utr.user_id;";
-    private static String addUserDetailQuery = "INSERT INTO user_details (status, user_email, user_first_name, user_last_name, user_password, user_phone_number) VALUES ( ?, ?, ?, ?, ?, ?);";
-    private static String checkExistingUserQuery = "select user_id from user_details where user_email = ?;";
-    private static String addUserRoleQuery = "insert into user_to_role(user_id,role_id) values(?,?);";
-    private static String getAllUsersQuery = "select ud.user_id, ud.user_first_name, ud.user_last_name, ud.user_email, ud.user_password, ud.status, ud.user_phone_number,utr.role_id from user_details ud, user_to_role utr where ud.user_id = utr.user_id; ";
-    private static String deleteUserInUserDetailsQuery = "delete from user_details where user_id = ?; ";
-    private static String deleteUserInUserToRoleQuery =  "delete from user_to_role where user_id = ?;";
-    private static String deleteUserRoleQuery = "delete from user_to_role where user_id = ? and role_id = ?";
-    private static String addNewRoleToExistingUserQuery = "insert into user_to_role(user_id,role_id) values (?,?)";
-    private static String updateInUserDetailsQuery = "update user_details set status = ?, user_email = ?, user_first_name = ?, user_last_name = ?, user_password = ?, user_phone_number = ? where user_id = ?;";
-    private static String checkNumberOfRolesAssociatedWithUserQuery = "select count(*) from user_to_role where user_id = ?;";
-    private static String fetchRoleIdAndRoleNameQuery = "select role_id,role_name from role_details";
-
-
+    private static final String userDashboardQuery = "SELECT ud.user_id, ud.user_email, utr.role_id from user_details ud, user_to_role utr WHERE ud.user_id = utr.user_id;";
+    private static final String addUserDetailQuery = "INSERT INTO user_details (status, user_email, user_first_name, user_last_name, user_password, user_phone_number) VALUES ( ?, ?, ?, ?, ?, ?);";
+    private static final String checkExistingUserQuery = "select user_id from user_details where user_email = ?;";
+    private static final String addUserRoleQuery = "insert into user_to_role(user_id,role_id) values(?,?);";
+    private static final String getAllUsersQuery = "select ud.user_id, ud.user_first_name, ud.user_last_name, ud.user_email, ud.user_password, ud.status, ud.user_phone_number,utr.role_id from user_details ud, user_to_role utr where ud.user_id = utr.user_id; ";
+    private static final String deleteUserInUserDetailsQuery = "delete from user_details where user_id = ?; ";
+    private static final String deleteUserInUserToRoleQuery =  "delete from user_to_role where user_id = ?;";
+    private static final String deleteUserRoleQuery = "delete from user_to_role where user_id = ? and role_id = ?";
+    private static final String addNewRoleToExistingUserQuery = "insert into user_to_role(user_id,role_id) values (?,?)";
+    private static final String updateInUserDetailsQuery = "update user_details set status = ?, user_email = ?, user_first_name = ?, user_last_name = ?, user_password = ?, user_phone_number = ? where user_id = ?;";
+    private static final String checkNumberOfRolesAssociatedWithUserQuery = "select count(*) from user_to_role where user_id = ?;";
+    private static final String fetchRoleIdAndRoleNameQuery = "select role_id,role_name from role_details";
+    private static final String fetchRoleIdFromRoleNameQuery = "select role_id from role_details where role_name = ?;";
+    private static final String getExistingUserDetailsQuery = "SELECT ud.user_id, ud.user_first_name, ud.user_last_name, ud.user_email, ud.user_password, ud.status, ud.user_phone_number, utr.role_id FROM user_details ud, user_to_role utr WHERE ud.user_id = utr.user_id AND ud.user_id = ?;";
+    private static final String fetchRoleNameFromRoleIdQuery = "select role_name from role_details where role_id = ?;";
 
     //datasource object for connection pooling with JDBC
     private final DataSource dataSource;
@@ -62,6 +64,11 @@ public class UserServiceImplementation implements UserService{
                 newUser.setUserPassword(resultSet.getString("user_password"));
                 newUser.setUserStatus(resultSet.getString("status"));
                 newUser.setUserPhoneNumber(resultSet.getString("user_phone_number"));
+                PreparedStatement userRoleFetched = connection.prepareStatement(fetchRoleNameFromRoleIdQuery);
+                userRoleFetched.setInt(1,resultSet.getInt("role_id"));
+                ResultSet roleNameFetched = userRoleFetched.executeQuery();
+                roleNameFetched.next();
+                newUser.setUserRoleName(roleNameFetched.getString("role_name"));
                 newUser.setUserRoleId(resultSet.getInt("role_id"));
                 userList.add(newUser);
             }
@@ -143,8 +150,19 @@ public class UserServiceImplementation implements UserService{
             }catch (SQLException e){
                 System.err.println(e.getMessage() + "  --generated key = " + autogeneratedUserId);
             }
+
+            RbacsApplication.check2(user);
+
+            statement = connection.prepareStatement(fetchRoleIdAndRoleNameQuery);
+            ResultSet roleIdRoleName = statement.executeQuery();
+            HashMap<String,Integer> roleDetails = new HashMap<>();
+            while (roleIdRoleName.next()){
+                roleDetails.put(roleIdRoleName.getString("role_name"),roleIdRoleName.getInt("role_id"));
+            }
+
+
             //fetched user's auto generated user_id here and then adding it to user_id,role_id table to set its role there.
-            int rowsAffected2 = addUserToRole(autogeneratedUserId,user.getUserRoleId()); //saving in user to role table.
+            int rowsAffected2 = addUserToRole(autogeneratedUserId,roleDetails.get(user.getUserRoleName())); //saving in user to role table.
             //now two rows has been added, one in user table and another in user_to_role
             if(rowsAffected + rowsAffected2>1) return "New user saved successfully";
             else return "New user did not saved";
@@ -197,16 +215,59 @@ public class UserServiceImplementation implements UserService{
     public String updateUser(User user, int id) {
         try{
             Connection connection = dataSource.getConnection();
+            PreparedStatement statementForOldUser = connection.prepareStatement(getExistingUserDetailsQuery);
+            statementForOldUser.setInt(1,id);
+            User existingUser = new User();
+            ResultSet existingUserFetched = statementForOldUser.executeQuery();
+            existingUserFetched.next();
+            existingUser.setUserId(id);
+            existingUser.setUserPhoneNumber(existingUserFetched.getString("user_phone_number"));
+//            existingUser.setUserEmail(existingUserFetched.getString("user_email"));
+            existingUser.setUserStatus(existingUserFetched.getString("status"));
+            existingUser.setUserFirstName(existingUserFetched.getString("user_first_name"));
+            existingUser.setUserPassword(existingUserFetched.getString("user_password"));
+            existingUser.setUserRoleId(existingUserFetched.getInt("role_id"));
+            existingUser.setUserLastName(existingUserFetched.getString("user_last_name"));
             PreparedStatement statement = connection.prepareStatement(updateInUserDetailsQuery);
-            statement.setString(1, user.getUserStatus()); // Status
-            statement.setString(2, user.getUserEmail()); // userEmail
-            statement.setString(3, user.getUserFirstName()); // userFirstName
-            statement.setString(4, user.getUserLastName()); // userLastName
-            statement.setString(5, user.getUserPassword()); // userPassword
-            statement.setString(6, user.getUserPhoneNumber()); // userPhoneNumber
+            RbacsApplication.printString("jo user frontend se pass hua");
+            RbacsApplication.check2(user);
+            RbacsApplication.printString("jo user existing tha with id = "+id);
+            RbacsApplication.check2(existingUser);
+            RbacsApplication.printString("id = "+id);
+            //check whether passed user has all that details or not and then send
+            String userStatus = user.getUserStatus();
+            if(userStatus == null) userStatus = existingUser.getUserStatus();
+            String userPhoneNumber = user.getUserPhoneNumber();
+            if(userPhoneNumber == null) userPhoneNumber = existingUser.getUserPhoneNumber();
+            String userFirstName = user.getUserFirstName();
+            if(userFirstName == null) userFirstName = existingUser.getUserFirstName();
+            String userLastName = user.getUserLastName();
+            if(userLastName == null) userLastName = existingUser.getUserLastName();
+            String userEmail = user.getUserEmail();
+            String userPassword = user.getUserPassword();
+            if(userPassword == null) userPassword = existingUser.getUserPassword();
+            statement.setString(1, userStatus); // Status
+            statement.setString(2, userEmail); // userEmail
+            statement.setString(3, userFirstName); // userFirstName
+            statement.setString(4, userLastName); // userLastName
+            statement.setString(5, userPassword); // userPassword
+            statement.setString(6, userPhoneNumber); // userPhoneNumber
             statement.setInt(7,id);
             int rowsAffected = statement.executeUpdate();
-            if(rowsAffected>0) return "user updated successfully :) ";
+            RbacsApplication.printString("rowsaff1 = " + rowsAffected);
+            statement = connection.prepareStatement(fetchRoleIdFromRoleNameQuery);
+            statement.setString(1,user.getUserRoleName());
+            RbacsApplication.printString(user.getUserRoleName());
+            ResultSet fetchedRoleId = statement.executeQuery();
+            fetchedRoleId.next();
+            int roleIdToAdd = fetchedRoleId.getInt("role_id");
+            RbacsApplication.printString("roleIDTOADD = "+roleIdToAdd);
+            statement = connection.prepareStatement(addUserRoleQuery);
+            statement.setInt(1,id);
+            statement.setInt(2,roleIdToAdd);
+            RbacsApplication.printString(user.getUserId() + " " + roleIdToAdd);
+            int rowsAffected2 = statement.executeUpdate();
+            if(rowsAffected + rowsAffected2>0) return "user updated successfully :) ";
             else return "user not exist, add user first then update :(";
 
         }catch (SQLException e){
@@ -215,6 +276,37 @@ public class UserServiceImplementation implements UserService{
         }
     }
 
+
+
+    @Override
+    public User getParticularUserById(int id){
+        try{
+            Connection connection = dataSource.getConnection();
+            PreparedStatement statementForOldUser = connection.prepareStatement(getExistingUserDetailsQuery);
+            statementForOldUser.setInt(1,id);
+            User existingUser = new User();
+            ResultSet existingUserFetched = statementForOldUser.executeQuery();
+            existingUserFetched.next();
+            if(existingUserFetched == null) return null;
+            existingUser.setUserId(id);
+            existingUser.setUserPhoneNumber(existingUserFetched.getString("user_phone_number"));
+            existingUser.setUserEmail(existingUserFetched.getString("user_email"));
+            existingUser.setUserStatus(existingUserFetched.getString("status"));
+            existingUser.setUserFirstName(existingUserFetched.getString("user_first_name"));
+            existingUser.setUserPassword(existingUserFetched.getString("user_password"));
+            existingUser.setUserRoleId(existingUserFetched.getInt("role_id"));
+            PreparedStatement userRoleFetched = connection.prepareStatement(fetchRoleNameFromRoleIdQuery);
+            userRoleFetched.setInt(1,existingUserFetched.getInt("role_id"));
+            ResultSet roleNameFetched = userRoleFetched.executeQuery();
+            roleNameFetched.next();
+            existingUser.setUserRoleName(roleNameFetched.getString("role_name"));
+            existingUser.setUserLastName(existingUserFetched.getString("user_last_name"));
+            return existingUser;
+        }catch (SQLException e){
+            System.err.println(e.getMessage());
+        }
+        return null;
+    }
 
     @Override
     public String addNewRoleToExistingUser(int user_id, int role_id) {

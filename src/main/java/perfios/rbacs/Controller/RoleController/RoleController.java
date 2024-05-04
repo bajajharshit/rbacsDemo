@@ -60,4 +60,10 @@ public class RoleController {
     public String deleteRolePermission(@PathVariable int role_id,@PathVariable int permission_id){
         return roleService.deleteRolePermission(role_id,permission_id);
     }
+
+
+    @GetMapping("permission/{role_id}")
+    public List<String> getPermissionsForParticularRole(@PathVariable int role_id){
+        return roleService.getPermissionForParticularRole(role_id);
+    }
 }

@@ -14,5 +14,6 @@ public interface RoleService {
     List<RoleToPermission> getRolePermissionList();
     String saveRolePermission(RoleToPermission roleToPermission);
     String deleteRolePermission(int role_id, int permission_id);
+    List<String> getPermissionForParticularRole(int role_id);
 
 }

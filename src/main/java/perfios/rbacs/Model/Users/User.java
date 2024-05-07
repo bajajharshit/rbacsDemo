@@ -2,6 +2,9 @@ package perfios.rbacs.Model.Users;
 
 import lombok.Data;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Data
 public class User {
     private int userId;
@@ -12,5 +15,6 @@ public class User {
     private String userStatus;
     private String userEmail;
     private String userRoleName;
+    private List<String> userRoleNameList = new ArrayList<>();
     private int userRoleId;
 }

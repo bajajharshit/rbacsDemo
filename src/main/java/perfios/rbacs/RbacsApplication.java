@@ -4,6 +4,8 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import perfios.rbacs.Model.Users.User;
 
+import java.util.HashMap;
+
 @SpringBootApplication
 public class RbacsApplication {
 
@@ -13,6 +15,11 @@ public class RbacsApplication {
 	}
 
 
+
+
+	public static void printMap(HashMap<String,Integer> hm){
+		System.out.println(hm);
+	}
 
 
 	public static void printString(String str){

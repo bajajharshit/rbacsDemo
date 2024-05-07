@@ -61,7 +61,7 @@ public class UserController {
     //this methord is for updating a user, it does not update user's role. for that another methord is created.
     @PutMapping("user/{id}")
     public String updateUser(@PathVariable int id , @RequestBody User user){
-        return userService.updateUser2(user,id);
+        return userService.updateUser(user,id);
     }
 
     //this methord is for adding a new role to user.
@@ -72,7 +72,15 @@ public class UserController {
 
 
     @PostMapping("/newuser")
-    public String addUser2(@RequestBody User user){
-        return userService.addUser2(user);
+    public String addNewUser(@RequestBody User user){
+        return userService.addNewUser(user);
     }
+
+
+    @PutMapping("/upduser/{id}")
+    public String updateUser2(@RequestBody User user, @PathVariable int id){
+        return userService.updateUser2(user,id);
+    }
+
+
 }

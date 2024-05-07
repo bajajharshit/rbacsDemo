@@ -17,5 +17,6 @@ public interface UserService {
     String addNewRoleToExistingUser(int user_id, int role_id);
     String updateUser2(User user, int id);
     User getParticularUserById(int id);
-    String addUser2(User user);
+    String checkEmailAlreadyExist(String emailId);
+    String addNewUser(User user);
 }

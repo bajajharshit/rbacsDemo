@@ -1,12 +1,19 @@
 package perfios.rbacs.Controller.UserController;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.annotation.*;
 import perfios.rbacs.Model.Users.User;
 import perfios.rbacs.Model.Users.UserDashboard;
+import perfios.rbacs.RbacsApplication;
 import perfios.rbacs.Repository.UserRepository.UserService;
 
 import java.util.List;
+import java.util.SimpleTimeZone;
 
 @RestController
 public class UserController {
@@ -17,8 +24,8 @@ public class UserController {
 
     //this is sample functin to check
     @RequestMapping("userhome")
-    public String userhome(){
-        return "user controller working af";
+    public ResponseEntity<String> userhome(){
+        return ResponseEntity.ok("user controller working af");
     }
 
     //this is for user dashboard (user_id, user email, user role)
@@ -29,9 +36,21 @@ public class UserController {
 
     //this methord receives a json of user model type and adds user into user_details table and user_to_role table correspondingly
     @PostMapping("user")
-    public String addUser(@RequestBody User user){
-        return userService.addUser(user);
+    public ResponseEntity<String> addNewUser(@Valid @RequestBody User user, BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            StringBuilder errorMessage = new StringBuilder();
+            errorMessage.append("400 BAD REQUEST\nthis request cannot be fullfilled");
+            for(ObjectError error : bindingResult.getAllErrors()){
+                errorMessage.append(error.getDefaultMessage());
+                errorMessage.append(".\n");
+            }
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorMessage.toString());
+        }
+
+        String result = userService.addNewUser(user);
+        return ResponseEntity.ok(result);
     }
+
 
     //this methord is to get user's list[user_id, remaining details and role_id]
     @GetMapping("user")
@@ -60,9 +79,21 @@ public class UserController {
 
     //this methord is for updating a user, it does not update user's role. for that another methord is created.
     @PutMapping("user/{id}")
-    public String updateUser(@PathVariable int id , @RequestBody User user){
-        return userService.updateUser(user,id);
+    public ResponseEntity<String> updateUser2(@PathVariable int id, @Valid @RequestBody User user, BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            StringBuilder errorMessage = new StringBuilder();
+            errorMessage.append("400 BAD REQUEST\nThis request cannot be fulfilled due to validation errors:\n");
+            for (ObjectError error : bindingResult.getAllErrors()) {
+                errorMessage.append(error.getDefaultMessage());
+                errorMessage.append(".\n");
+            }
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorMessage.toString());
+        }
+
+        String result = userService.updateUser2(user, id);
+        return ResponseEntity.ok(result);
     }
+
 
     //this methord is for adding a new role to user.
     @PostMapping("user/role")
@@ -70,17 +101,6 @@ public class UserController {
         return userService.addNewRoleToExistingUser(user_id,role_id);
     }
 
-
-    @PostMapping("/newuser")
-    public String addNewUser(@RequestBody User user){
-        return userService.addNewUser(user);
-    }
-
-
-    @PutMapping("/upduser/{id}")
-    public String updateUser2(@RequestBody User user, @PathVariable int id){
-        return userService.updateUser2(user,id);
-    }
 
 
 }

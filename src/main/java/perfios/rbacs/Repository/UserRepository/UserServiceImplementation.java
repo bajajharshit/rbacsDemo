@@ -22,19 +22,19 @@ public class UserServiceImplementation implements UserService{
 
 
     private static final String userDashboardQuery = "SELECT ud.user_id, ud.user_email, utr.role_id from user_details ud, user_to_role utr WHERE ud.user_id = utr.user_id;";
-    private static final String addUserDetailQuery = "INSERT INTO user_details (status, user_email, user_first_name, user_last_name, user_password, user_phone_number) VALUES ( ?, ?, ?, ?, ?, ?);";
+    private static final String addUserDetailQuery = "INSERT INTO user_details (status, user_email, user_first_name, user_last_name, user_password, user_phone_number, enabled, is_super_admin, should_loan_auto_apply) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?);";
     private static final String checkExistingUserQuery = "select user_id from user_details where user_email = ?;";
     private static final String addUserRoleQuery = "insert into user_to_role(user_id,role_id) values(?,?);";
-    private static final String getAllUsersQuery = "select ud.user_id, ud.user_first_name, ud.user_last_name, ud.user_email, ud.user_password, ud.status, ud.user_phone_number,utr.role_id from user_details ud, user_to_role utr where ud.user_id = utr.user_id; ";
+    private static final String getAllUsersQuery = "select ud.user_id, ud.user_first_name, ud.user_last_name, ud.user_email, ud.user_password, ud.status, ud.user_phone_number, ud.enabled, ud.is_super_admin, ud.should_loan_auto_apply, utr.role_id from user_details ud, user_to_role utr where ud.user_id = utr.user_id; ";
     private static final String deleteUserInUserDetailsQuery = "delete from user_details where user_id = ?; ";
     private static final String deleteUserInUserToRoleQuery =  "delete from user_to_role where user_id = ?;";
     private static final String deleteUserRoleQuery = "delete from user_to_role where user_id = ? and role_id = ?";
     private static final String addNewRoleToExistingUserQuery = "insert into user_to_role(user_id,role_id) values (?,?)";
-    private static final String updateInUserDetailsQuery = "update user_details set status = ?, user_first_name = ?, user_last_name = ?, user_password = ?, user_phone_number = ? where user_id = ?;";
+    private static final String updateInUserDetailsQuery = "update user_details set status = ?, user_first_name = ?, user_last_name = ?, user_password = ?, user_phone_number = ? ,enabled = ?, is_super_admin = ?, should_loan_auto_apply = ? where user_id = ?;";
     private static final String checkNumberOfRolesAssociatedWithUserQuery = "select count(*) from user_to_role where user_id = ?;";
     private static final String fetchRoleIdAndRoleNameQuery = "select role_id,role_name from role_details";
     private static final String fetchRoleIdFromRoleNameQuery = "select role_id from role_details where role_name = ?;";
-    private static final String getExistingUserDetailsQuery = "SELECT ud.user_id, ud.user_first_name, ud.user_last_name, ud.user_email, ud.user_password, ud.status, ud.user_phone_number, utr.role_id FROM user_details ud, user_to_role utr WHERE ud.user_id = utr.user_id AND ud.user_id = ?;";
+    private static final String getExistingUserDetailsQuery = "SELECT ud.user_id, ud.user_first_name, ud.user_last_name, ud.user_email, ud.user_password, ud.status, ud.user_phone_number, ud.enabled, ud.is_super_admin, ud.should_loan_auto_apply, utr.role_id FROM user_details ud, user_to_role utr WHERE ud.user_id = utr.user_id AND ud.user_id = ?;";
     private static final String fetchRoleNameFromRoleIdQuery = "select role_name from role_details where role_id = ?;";
     private static final String getAllRolesIdAssociatedWithUserQuery = "select role_id from user_to_role where user_id = ?;";
     private static final String updateRoleOfUserQuery = "update user_to_role set role_id = ? where user_id = ?;";
@@ -68,6 +68,9 @@ public class UserServiceImplementation implements UserService{
                 newUser.setUserPassword(resultSet.getString("user_password"));
                 newUser.setUserStatus(resultSet.getString("status"));
                 newUser.setUserPhoneNumber(resultSet.getString("user_phone_number"));
+                newUser.setEnabled(resultSet.getBoolean("enabled"));
+                newUser.setIsSuperAdmin(resultSet.getBoolean("is_super_admin"));
+                newUser.setShouldLoanAutoApply(resultSet.getBoolean("should_loan_auto_apply"));
                 PreparedStatement userRoleFetched = connection.prepareStatement(fetchRoleNameFromRoleIdQuery);
                 userRoleFetched.setInt(1,resultSet.getInt("role_id"));
                 ResultSet roleNameFetched = userRoleFetched.executeQuery();
@@ -118,7 +121,7 @@ public class UserServiceImplementation implements UserService{
 
     
 
-
+    //-----------------------------not using this function now---------------------
     //this function is for adding new and existing users with new role..
     //if an user is already added with role 1, second time it will only update in user_to_role table.
     //so there will be no duplicate entry for same user in user_detals table.
@@ -191,10 +194,15 @@ public class UserServiceImplementation implements UserService{
         return "user adding into DB failed";
     }
 
+
+
+    //function to add new user from now onwards
     @Override
     public String addNewUser(User user){
+        Connection connection = null;
         try{
-            Connection connection = dataSource.getConnection();
+            connection = dataSource.getConnection();
+            connection.setAutoCommit(false);
             PreparedStatement statement = connection.prepareStatement(addUserDetailQuery,PreparedStatement.RETURN_GENERATED_KEYS);
             statement.setString(1, user.getUserStatus()); // Status
             statement.setString(2, user.getUserEmail()); // userEmail
@@ -202,9 +210,11 @@ public class UserServiceImplementation implements UserService{
             statement.setString(4, user.getUserLastName()); // userLastName
             statement.setString(5, user.getUserPassword()); // userPassword
             statement.setString(6, user.getUserPhoneNumber()); // userPhoneNumber
+            statement.setBoolean(7,user.getEnabled()); //enable
+            statement.setBoolean(8, user.getIsSuperAdmin()); //supradmin
+            statement.setBoolean(9,user.getShouldLoanAutoApply()); //loanautoaply
             int rowsAffected = statement.executeUpdate();
             if(rowsAffected == 0) return "Adding User Failed. :(";
-
             int autoGeneratedUserId = 0;
             try{
                 ResultSet autoGeneratedKey = statement.getGeneratedKeys();
@@ -216,9 +226,20 @@ public class UserServiceImplementation implements UserService{
             statement = connection.prepareStatement(addUserRoleQuery);
             statement.setInt(1,autoGeneratedUserId);
             statement.setInt(2,user.getUserRoleId());
-            int rowsAffected2 = statement.executeUpdate();
-            if(rowsAffected2 == 0) return "invalid role passed, or user may not be present in database, adding failed";
-            if(rowsAffected + rowsAffected2 > 1) return "New User Added Successfully :)";
+            int rowsAffected2 = 0;
+            try {
+                rowsAffected2 = statement.executeUpdate();
+            }catch (SQLException e){
+                connection.rollback();
+                System.err.println(e.getMessage());
+            }
+            if(rowsAffected2 == 0) {
+                return "invalid role passed, or user may not be present in database, adding failed";
+            }
+            if(rowsAffected + rowsAffected2 > 1) {
+                connection.commit();
+                return "New User Added Successfully :)";
+            }
         }
         catch (SQLException e){
             System.err.println(e.getMessage());
@@ -263,22 +284,21 @@ public class UserServiceImplementation implements UserService{
     }
 
 
-
-
-
-
-
-
     public String updateUser2(User user, int id){
+        Connection connection = null;
         try{
-            Connection connection  = dataSource.getConnection();
+            connection  = dataSource.getConnection();
+            connection.setAutoCommit(false);
             PreparedStatement statement = connection.prepareStatement(updateInUserDetailsQuery);
             statement.setString(1, user.getUserStatus()); // Status
             statement.setString(2, user.getUserFirstName()); // userFirstName
             statement.setString(3, user.getUserLastName()); // userLastName
             statement.setString(4, user.getUserPassword()); // userPassword
             statement.setString(5, user.getUserPhoneNumber()); // userPhoneNumber
-            statement.setInt(6,id);
+            statement.setBoolean(6,user.getEnabled()); //enable
+            statement.setBoolean(7, user.getIsSuperAdmin()); //supradmin
+            statement.setBoolean(8,user.getShouldLoanAutoApply());
+            statement.setInt(9,id);
             int rowsAffected = statement.executeUpdate();
             if(rowsAffected == 0) return "updating user failed, invalid user_id in url";
             if(rowsAffected == 1) RbacsApplication.printString("user details table updated successfully");
@@ -291,10 +311,14 @@ public class UserServiceImplementation implements UserService{
             try{
                 rowsAffected2 = statement.executeUpdate();
             }catch (SQLException e){
+                connection.rollback();
                 System.err.println(e.getMessage());
             }
             if(rowsAffected2 == 0) return "Invalid role Entered\n";
-            if(rowsAffected2 + rowsAffected > 1) return "user updated successfully";
+            if(rowsAffected2 >0 && rowsAffected > 0) {
+                connection.commit();
+                return "user updated successfully";
+            }
         }catch (SQLException e){   //main catch block
             System.err.println(e.getMessage());
         }
@@ -396,6 +420,9 @@ public class UserServiceImplementation implements UserService{
             existingUser.setUserFirstName(existingUserFetched.getString("user_first_name"));
             existingUser.setUserLastName(existingUserFetched.getString("user_last_name"));
             existingUser.setUserPassword(existingUserFetched.getString("user_password"));
+            existingUser.setEnabled(existingUserFetched.getBoolean("enabled"));
+            existingUser.setIsSuperAdmin(existingUserFetched.getBoolean("is_super_admin"));
+            existingUser.setShouldLoanAutoApply(existingUserFetched.getBoolean("should_loan_auto_apply"));
             RbacsApplication.printString("user after fetching from user_details;");
             RbacsApplication.check2(existingUser);
 //          //got everything except role array.
@@ -491,12 +518,6 @@ public class UserServiceImplementation implements UserService{
         }
         return null;
     }
-
-
-
-
-
-
 
 
 }

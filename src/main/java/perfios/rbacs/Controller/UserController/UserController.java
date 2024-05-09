@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.annotation.*;
+import perfios.rbacs.Model.LoginDetails.LoginDetails;
 import perfios.rbacs.Model.Users.User;
 import perfios.rbacs.Model.Users.UserDashboard;
 import perfios.rbacs.RbacsApplication;
@@ -15,6 +16,8 @@ import perfios.rbacs.Repository.UserRepository.UserService;
 import java.util.List;
 import java.util.SimpleTimeZone;
 
+
+@CrossOrigin
 @RestController
 public class UserController {
 
@@ -33,6 +36,14 @@ public class UserController {
     public List<UserDashboard> getAllUsersDashboard(){
         return  userService.getAllUserDashboard();
     }
+
+
+    @GetMapping("/login")
+    public LoginDetails loginCheck(@RequestParam String userEmail, @RequestParam String userPassword){
+        RbacsApplication.printString(userEmail + " " + userPassword);
+        return userService.loginCheck(userEmail,userPassword);
+    }
+
 
     //this methord receives a json of user model type and adds user into user_details table and user_to_role table correspondingly
     @PostMapping("user")

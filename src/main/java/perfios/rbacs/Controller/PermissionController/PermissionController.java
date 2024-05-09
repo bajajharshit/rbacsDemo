@@ -8,6 +8,7 @@ import perfios.rbacs.Repository.PermissionRepository.PermissionService;
 import java.util.List;
 
 @RestController
+@CrossOrigin
 public class PermissionController {
 
     @Autowired

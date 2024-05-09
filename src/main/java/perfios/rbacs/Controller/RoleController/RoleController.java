@@ -8,6 +8,7 @@ import perfios.rbacs.Repository.RoleRepository.RoleService;
 
 import java.util.List;
 
+@CrossOrigin
 @RestController
 public class RoleController {
 
@@ -50,9 +51,9 @@ public class RoleController {
     }
 
     //this is for adding a new permission to existing role (in terms of role_id and permission _id)
-    @PostMapping("rolepermission")
-    public String saveRolePermission(@RequestBody RoleToPermission roleToPermission){
-        return roleService.saveRolePermission(roleToPermission);
+    @PostMapping("role/{role_id}/permission/{permission_id}")
+    public String saveRolePermission(@PathVariable int role_id, @PathVariable int permission_id){
+        return roleService.saveRolePermission(role_id, permission_id);
     }
 
     //this is for deleting permission for a role in terms of role_id and permissoin_id in role_to_permisson

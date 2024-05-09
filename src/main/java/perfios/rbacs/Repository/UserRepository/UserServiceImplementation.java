@@ -1,11 +1,16 @@
 package perfios.rbacs.Repository.UserRepository;
+import lombok.extern.java.Log;
 import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import perfios.rbacs.Model.LoginDetails.LoginDetails;
 import perfios.rbacs.Model.Users.User;
 import perfios.rbacs.Model.Users.UserDashboard;
 import perfios.rbacs.RbacsApplication;
+import perfios.rbacs.Repository.RoleRepository.RoleService;
+import perfios.rbacs.Repository.RoleRepository.RoleServiceImplementation;
+
 import javax.annotation.processing.Generated;
 import javax.sql.DataSource;
 import javax.xml.crypto.Data;
@@ -38,7 +43,8 @@ public class UserServiceImplementation implements UserService{
     private static final String fetchRoleNameFromRoleIdQuery = "select role_name from role_details where role_id = ?;";
     private static final String getAllRolesIdAssociatedWithUserQuery = "select role_id from user_to_role where user_id = ?;";
     private static final String updateRoleOfUserQuery = "update user_to_role set role_id = ? where user_id = ?;";
-
+    private static final String checkPasswordForUserbyIdQuery = "select user_password from user_details where user_id = ?";
+    private static final String getAllPermissionIdsForUserByIdQuery = "select rtp.permission_id, role_id from role_to_permission rtp where role_id = (select role_id from user_to_role where user_id = ?);";
 
 
     //datasource object for connection pooling with JDBC
@@ -48,6 +54,70 @@ public class UserServiceImplementation implements UserService{
     public UserServiceImplementation(DataSource dataSource){
         this.dataSource = dataSource;
     }
+
+
+    //may be required later.
+    private int session_user_id=0;
+    private int session_role_id=0;
+
+
+    @Override
+    public LoginDetails loginCheck(String userEmail, String userPassword){
+        RbacsApplication.printString(userPassword + " " + userEmail);
+        try {
+            Connection connection = dataSource.getConnection();
+            PreparedStatement statement = connection.prepareStatement(checkExistingUserQuery);
+            statement.setString(1, userEmail);
+            ResultSet checkEmailId = null;statement.executeQuery();
+            try{
+                checkEmailId = statement.executeQuery();
+                if(!checkEmailId.next()) {
+                    LoginDetails loginDetails = new LoginDetails();
+                    loginDetails.setAnyMessage("Email id not found");
+                    return loginDetails;
+                }
+            }catch (SQLException e){
+                e.printStackTrace();
+                RbacsApplication.printString("empty result set verified");
+                System.err.println("empry set" + e.getMessage());
+            }
+
+
+            session_user_id = checkEmailId.getInt("user_id");
+            statement = connection.prepareStatement(checkPasswordForUserbyIdQuery);
+            statement.setInt(1,session_user_id);
+            ResultSet checkPassword = statement.executeQuery();
+            checkPassword.next();
+            if(!checkPassword.getString("user_password").equals(userPassword)){
+                LoginDetails loginDetails = new LoginDetails();
+                loginDetails.setIsEmailIdCorrect(true);
+                loginDetails.setAnyMessage("Email is valid but password is incorrect");
+                return loginDetails;
+            }
+            LoginDetails loginDetails = new LoginDetails();
+            loginDetails.setIsPasswordCorrect(true);
+            loginDetails.setIsEmailIdCorrect(true);
+            statement = connection.prepareStatement(getAllPermissionIdsForUserByIdQuery);
+            statement.setInt(1,session_user_id);
+            ResultSet permissionList = statement.executeQuery();
+            if(!permissionList.next()) {
+                loginDetails.setAnyMessage("This user is not associated with a role");
+                return loginDetails;
+            }
+            session_role_id = permissionList.getInt("role_id");
+            RbacsApplication.printString("role_id = " + session_role_id);
+            do{
+                loginDetails.getPermissionList().add(permissionList.getInt("permission_id"));
+            }while (permissionList.next());
+
+            return loginDetails;
+        }catch (SQLException e){
+            e.printStackTrace();
+            System.err.println(e.getMessage());
+        }
+        return null;
+    }
+
 
 
     //function to display list of users with their roles, if one user have multiple role then it will return separate row for that.
@@ -88,18 +158,18 @@ public class UserServiceImplementation implements UserService{
 
 
     @Override
-    public String checkEmailAlreadyExist(String emailId){
+    public Boolean checkEmailAlreadyExist(String emailId){
         try{
             Connection connection = dataSource.getConnection();
             PreparedStatement statement = connection.prepareStatement(checkExistingUserQuery);
             statement.setString(1,emailId);
             ResultSet checkEmailId = statement.executeQuery();
-            if(!checkEmailId.next()) return "";
-            else return "This email ID already Exist, use a different one";
+            if(!checkEmailId.next()) return false;
+            else return true;
         }catch (SQLException e){
             System.err.println(e.getMessage());
         }
-        return "Checking email id exist test failed";
+        return false;
     }
 
 
@@ -199,6 +269,7 @@ public class UserServiceImplementation implements UserService{
     //function to add new user from now onwards
     @Override
     public String addNewUser(User user){
+        if(checkEmailAlreadyExist(user.getUserEmail())) return "TRY WITH A DIFFERENT EMAIL";
         Connection connection = null;
         try{
             connection = dataSource.getConnection();
@@ -425,7 +496,7 @@ public class UserServiceImplementation implements UserService{
             existingUser.setShouldLoanAutoApply(existingUserFetched.getBoolean("should_loan_auto_apply"));
             RbacsApplication.printString("user after fetching from user_details;");
             RbacsApplication.check2(existingUser);
-//          //got everything except role array.
+             //got everything except role array.
             HashMap<Integer,String > roleDetails = new HashMap<>();
             PreparedStatement roleTableStatement = connection.prepareStatement(fetchRoleIdAndRoleNameQuery);
             ResultSet roleDetailsSet = roleTableStatement.executeQuery();

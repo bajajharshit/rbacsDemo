@@ -12,7 +12,7 @@ public interface RoleService {
     String saveRole(Role role);
     String deleteRoleWithId(int id);
     List<RoleToPermission> getRolePermissionList();
-    String saveRolePermission(RoleToPermission roleToPermission);
+    String saveRolePermission(int role_id, int permission_id);
     String deleteRolePermission(int role_id, int permission_id);
     List<String> getPermissionForParticularRole(int role_id);
 

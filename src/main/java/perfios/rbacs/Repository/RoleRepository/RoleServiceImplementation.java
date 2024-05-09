@@ -32,7 +32,7 @@ public class RoleServiceImplementation implements RoleService{
     private static String saveRolePermissionQuery = "insert into role_to_permission(role_id,permission_id) values(?,?);";
     private static String deleteRolePermissionQuery= "delete from role_to_permission where role_id = ? and permission_id = ?;";
     private static String getPermissionIdPermissionNameQuery = "select permission_id,permission_name from permission;";
-    private static String getPermissionForParticularRoleQuery = "SELECT permission.permission_name FROM permission WHERE permission.permission_id IN (SELECT permission_id FROM role_to_permission WHERE role_id = ?);";
+    private static String getPermissionForParticularRoleQuery = "SELECT permission.permission_id, permission.permission_name FROM permission WHERE permission.permission_id IN (SELECT permission_id FROM role_to_permission WHERE role_id = ?);";
     @Override
     public List<Role> getAllRoles() {
         try (Connection connection = dataSource.getConnection();
@@ -169,13 +169,13 @@ public class RoleServiceImplementation implements RoleService{
     }
 
     @Override
-    public String saveRolePermission(RoleToPermission roleToPermission){
+    public String saveRolePermission(int role_id, int permission_id){
         try {
             Connection connection = dataSource.getConnection();
             try{
                 PreparedStatement statement = connection.prepareStatement(saveRolePermissionQuery);
-                statement.setInt(1,roleToPermission.getRoleId());
-                statement.setInt(2,roleToPermission.getPermissionId());
+                statement.setInt(1,role_id);
+                statement.setInt(2,permission_id);
                 int rowsAffected = statement.executeUpdate();
                 if(rowsAffected>0) return "saved successfully";
                 else return "did not saved";

@@ -63,7 +63,7 @@ public class RoleController {
     }
 
 
-    @GetMapping("permission/{role_id}")
+    @GetMapping("rolepermission/{role_id}")
     public List<String> getPermissionsForParticularRole(@PathVariable int role_id){
         return roleService.getPermissionForParticularRole(role_id);
     }

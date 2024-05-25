@@ -24,4 +24,6 @@ public interface UserService {
     Boolean checkEmailAlreadyExist(String emailId);
     String addNewUser(User user);
     LoginDetails loginCheck(String userEmail, String userPassword);
+    Boolean logout();
+
 }

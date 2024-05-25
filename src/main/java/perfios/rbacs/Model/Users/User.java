@@ -23,6 +23,7 @@ public class User {
     private String userLastName;
 
     @NotBlank(message = "password cannot be blank")
+    @Size(min = 6, message =  "password atleast 6 characters")
     private String  userPassword;
 
     @NotBlank(message = "Phone number can't be empty")

@@ -7,8 +7,8 @@ import java.util.List;
 
 @Data
 public class LoginDetails {
-    Boolean isEmailIdCorrect = false;
-    Boolean isPasswordCorrect = false;
+    Boolean isUserExist;
     List<Integer> permissionList = new ArrayList<>();
     String anyMessage;
+    Boolean isEnabledToLogin;
 }

@@ -5,6 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import perfios.rbacs.Model.Users.User;
 
 import java.util.HashMap;
+import java.util.Set;
 
 @SpringBootApplication
 public class RbacsApplication {
@@ -34,5 +35,8 @@ public class RbacsApplication {
 		System.out.println(a + "  " + b);
 	}
 
+	public static void printSet(Set<Integer> a){
+		System.out.println(a);
+	}
 
 }

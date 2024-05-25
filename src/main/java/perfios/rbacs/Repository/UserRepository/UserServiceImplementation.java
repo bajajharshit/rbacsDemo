@@ -1,26 +1,16 @@
 package perfios.rbacs.Repository.UserRepository;
-import lombok.extern.java.Log;
-import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
 import perfios.rbacs.Model.LoginDetails.LoginDetails;
 import perfios.rbacs.Model.Users.User;
 import perfios.rbacs.Model.Users.UserDashboard;
 import perfios.rbacs.RbacsApplication;
-import perfios.rbacs.Repository.RoleRepository.RoleService;
-import perfios.rbacs.Repository.RoleRepository.RoleServiceImplementation;
 
-import javax.annotation.processing.Generated;
 import javax.sql.DataSource;
-import javax.xml.crypto.Data;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
 @Service
 public class UserServiceImplementation implements UserService{
@@ -28,9 +18,9 @@ public class UserServiceImplementation implements UserService{
 
     private static final String userDashboardQuery = "SELECT ud.user_id, ud.user_email, utr.role_id from user_details ud, user_to_role utr WHERE ud.user_id = utr.user_id;";
     private static final String addUserDetailQuery = "INSERT INTO user_details (status, user_email, user_first_name, user_last_name, user_password, user_phone_number, enabled, is_super_admin, should_loan_auto_apply) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?);";
-    private static final String checkExistingUserQuery = "select user_id from user_details where user_email = ?;";
+    private static final String checkExistingUserQuery = "select user_id,enabled,user_password from user_details where user_email = ?;";
     private static final String addUserRoleQuery = "insert into user_to_role(user_id,role_id) values(?,?);";
-    private static final String getAllUsersQuery = "select ud.user_id, ud.user_first_name, ud.user_last_name, ud.user_email, ud.user_password, ud.status, ud.user_phone_number, ud.enabled, ud.is_super_admin, ud.should_loan_auto_apply, utr.role_id from user_details ud, user_to_role utr where ud.user_id = utr.user_id; ";
+    private static final String getAllUsersQuery = "select ud.user_id, ud.user_first_name, ud.user_last_name, ud.user_email, ud.user_password, ud.status, ud.user_phone_number, ud.enabled, ud.is_super_admin, ud.should_loan_auto_apply, utr.role_id from user_details ud, user_to_role utr where ud.user_id = utr.user_id order by utr.role_id; ";
     private static final String deleteUserInUserDetailsQuery = "delete from user_details where user_id = ?; ";
     private static final String deleteUserInUserToRoleQuery =  "delete from user_to_role where user_id = ?;";
     private static final String deleteUserRoleQuery = "delete from user_to_role where user_id = ? and role_id = ?";
@@ -57,23 +47,31 @@ public class UserServiceImplementation implements UserService{
 
 
     //may be required later.
-    private int session_user_id=0;
-    private int session_role_id=0;
+    private int sessionUserId =0;
+    private int sessionRoleId =0;
+    private Set<Integer> sessionPermissions = new HashSet<>();
+    boolean isSomeoneLoggedIn = false;
 
 
     @Override
     public LoginDetails loginCheck(String userEmail, String userPassword){
+        if(isSomeoneLoggedIn) return null;
         RbacsApplication.printString(userPassword + " " + userEmail);
         try {
             Connection connection = dataSource.getConnection();
             PreparedStatement statement = connection.prepareStatement(checkExistingUserQuery);
             statement.setString(1, userEmail);
-            ResultSet checkEmailId = null;statement.executeQuery();
+            ResultSet checkExistingUser = null;
             try{
-                checkEmailId = statement.executeQuery();
-                if(!checkEmailId.next()) {
+                checkExistingUser = statement.executeQuery();
+                if(!checkExistingUser.next()) {  //will go inside only if user does not exist.
                     LoginDetails loginDetails = new LoginDetails();
-                    loginDetails.setAnyMessage("Email id not found");
+                    loginDetails.setIsUserExist(false);
+                    loginDetails.setAnyMessage("bad credentials");
+                }else if(!userPassword.equals(checkExistingUser.getString("user_password"))){
+                    LoginDetails loginDetails = new LoginDetails();
+                    loginDetails.setIsUserExist(true);
+                    loginDetails.setAnyMessage("bad credentials");
                     return loginDetails;
                 }
             }catch (SQLException e){
@@ -81,35 +79,32 @@ public class UserServiceImplementation implements UserService{
                 RbacsApplication.printString("empty result set verified");
                 System.err.println("empry set" + e.getMessage());
             }
-
-
-            session_user_id = checkEmailId.getInt("user_id");
-            statement = connection.prepareStatement(checkPasswordForUserbyIdQuery);
-            statement.setInt(1,session_user_id);
-            ResultSet checkPassword = statement.executeQuery();
-            checkPassword.next();
-            if(!checkPassword.getString("user_password").equals(userPassword)){
+            if(!checkExistingUser.getBoolean("enabled")) {
                 LoginDetails loginDetails = new LoginDetails();
-                loginDetails.setIsEmailIdCorrect(true);
-                loginDetails.setAnyMessage("Email is valid but password is incorrect");
+                loginDetails.setIsEnabledToLogin(false);
+                loginDetails.setAnyMessage("You don't have access to login in");
                 return loginDetails;
             }
             LoginDetails loginDetails = new LoginDetails();
-            loginDetails.setIsPasswordCorrect(true);
-            loginDetails.setIsEmailIdCorrect(true);
+            loginDetails.setIsUserExist(true);
+            loginDetails.setIsEnabledToLogin(true);
+            sessionUserId = checkExistingUser.getInt("user_id");
             statement = connection.prepareStatement(getAllPermissionIdsForUserByIdQuery);
-            statement.setInt(1,session_user_id);
+            statement.setInt(1, sessionUserId);
             ResultSet permissionList = statement.executeQuery();
             if(!permissionList.next()) {
                 loginDetails.setAnyMessage("This user is not associated with a role");
                 return loginDetails;
             }
-            session_role_id = permissionList.getInt("role_id");
-            RbacsApplication.printString("role_id = " + session_role_id);
+            sessionRoleId = permissionList.getInt("role_id");
+            RbacsApplication.printString("role_id = " + sessionRoleId);
             do{
                 loginDetails.getPermissionList().add(permissionList.getInt("permission_id"));
             }while (permissionList.next());
-
+            for(Integer a : loginDetails.getPermissionList()) sessionPermissions.add(a);
+            RbacsApplication.printSet(sessionPermissions);
+            isSomeoneLoggedIn=true;
+            loginDetails.setAnyMessage("Successfully logged in");
             return loginDetails;
         }catch (SQLException e){
             e.printStackTrace();
@@ -120,10 +115,21 @@ public class UserServiceImplementation implements UserService{
 
 
 
+
+    @Override
+    public Boolean logout(){
+        sessionPermissions.clear();
+        sessionUserId=0;
+        sessionRoleId=0;
+        isSomeoneLoggedIn = false;
+        return true;
+    }
+
     //function to display list of users with their roles, if one user have multiple role then it will return separate row for that.
     //one row with first role, another row with second role and so on.
     @Override
     public List<User> getAllUsers() {
+        if(!sessionPermissions.contains(2)) return null;
         try{
             Connection connection = dataSource.getConnection();
             PreparedStatement preparedStatement = connection.prepareStatement(getAllUsersQuery);
@@ -269,6 +275,7 @@ public class UserServiceImplementation implements UserService{
     //function to add new user from now onwards
     @Override
     public String addNewUser(User user){
+        if(!sessionPermissions.contains(1)) return "You don't have permission to create a user\n";
         if(checkEmailAlreadyExist(user.getUserEmail())) return "TRY WITH A DIFFERENT EMAIL";
         Connection connection = null;
         try{
@@ -356,6 +363,7 @@ public class UserServiceImplementation implements UserService{
 
 
     public String updateUser2(User user, int id){
+        if(!sessionPermissions.contains(3)) return "YOU DON'T HAVE PERMISSION TO UPDATE";
         Connection connection = null;
         try{
             connection  = dataSource.getConnection();
@@ -476,6 +484,10 @@ public class UserServiceImplementation implements UserService{
 
     @Override
     public User getParticularUserById(int id){
+        boolean allow = false;
+        if(sessionPermissions.contains(7)) allow = true;
+        if(sessionPermissions.contains(5) && !sessionPermissions.contains(7) && id == sessionUserId) allow = true;
+        if(!allow) return null;
         try{
             Connection connection = dataSource.getConnection();
             PreparedStatement statementForOldUser = connection.prepareStatement(getExistingUserDetailsQuery);
@@ -483,7 +495,9 @@ public class UserServiceImplementation implements UserService{
             User existingUser = new User();
             ResultSet existingUserFetched = statementForOldUser.executeQuery();
             existingUserFetched.next();
-            if(existingUserFetched == null) return null;
+            if(existingUserFetched == null) {
+                return null;
+            }
             existingUser.setUserId(id);
             existingUser.setUserPhoneNumber(existingUserFetched.getString("user_phone_number"));
             existingUser.setUserEmail(existingUserFetched.getString("user_email"));
@@ -541,6 +555,7 @@ public class UserServiceImplementation implements UserService{
     //this function is to delete user
     @Override
     public String deleteUser(int id) {
+        if(!sessionPermissions.contains(4)) return "YOU DONT HAVE PERMISSION TO PERFORM THIS OPERATION";
         try{
             Connection connection = dataSource.getConnection();
             PreparedStatement statement = connection.prepareStatement(deleteUserInUserToRoleQuery);
@@ -565,6 +580,7 @@ public class UserServiceImplementation implements UserService{
     // and then returns role_name from hashmap. so we dont want to read from table(roles) for every entry.
     @Override
     public List<UserDashboard> getAllUserDashboard(){
+        if(!sessionPermissions.contains(6)) return null;
         try{
             Connection connection = dataSource.getConnection();
             PreparedStatement preparedStatement = connection.prepareStatement(userDashboardQuery);

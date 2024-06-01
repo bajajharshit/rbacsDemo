@@ -6,6 +6,7 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.KeyPair;
 import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.SignatureException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.tomcat.util.net.openssl.ciphers.Authentication;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -129,6 +130,7 @@ public class JwtTokenService {
 
     private String extractSubjeectFromJwtToken(String jwtToken){
         Claims claims = extractClaimsFromJwt(jwtToken);
+        if(claims == null) return null;
         return claims.getSubject();
     }
 
@@ -151,7 +153,9 @@ public class JwtTokenService {
                     .build()
                     .parseSignedClaims(jwtToken)
                     .getPayload();
-        }catch (ExpiredJwtException e){
+        }catch (ExpiredJwtException e ){
+            return null;
+        }catch (SignatureException f){
             return null;
         }
 

@@ -36,6 +36,7 @@ public class User {
     @Email(message =  "Email ID should be valid")
     private String userEmail;
 
+    @NotBlank
     private String userRoleName;
     private List<String> userRoleNameList = new ArrayList<>();
 

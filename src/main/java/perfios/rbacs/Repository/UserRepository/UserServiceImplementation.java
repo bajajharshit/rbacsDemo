@@ -1,10 +1,15 @@
 package perfios.rbacs.Repository.UserRepository;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
-import perfios.rbacs.Model.LoginDetails.LoginDetails;
+import perfios.rbacs.Model.LoginPost.LoginPostOb;
+import perfios.rbacs.Model.LoginResponse.LoginResponse;
 import perfios.rbacs.Model.Users.User;
 import perfios.rbacs.Model.Users.UserDashboard;
 import perfios.rbacs.RbacsApplication;
 
+import javax.print.DocFlavor;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -28,13 +33,12 @@ public class UserServiceImplementation implements UserService{
     private static final String updateInUserDetailsQuery = "update user_details set status = ?, user_first_name = ?, user_last_name = ?, user_password = ?, user_phone_number = ? ,enabled = ?, is_super_admin = ?, should_loan_auto_apply = ? where user_id = ?;";
     private static final String checkNumberOfRolesAssociatedWithUserQuery = "select count(*) from user_to_role where user_id = ?;";
     private static final String fetchRoleIdAndRoleNameQuery = "select role_id,role_name from role_details";
-    private static final String fetchRoleIdFromRoleNameQuery = "select role_id from role_details where role_name = ?;";
     private static final String getExistingUserDetailsQuery = "SELECT ud.user_id, ud.user_first_name, ud.user_last_name, ud.user_email, ud.user_password, ud.status, ud.user_phone_number, ud.enabled, ud.is_super_admin, ud.should_loan_auto_apply, utr.role_id FROM user_details ud, user_to_role utr WHERE ud.user_id = utr.user_id AND ud.user_id = ?;";
     private static final String fetchRoleNameFromRoleIdQuery = "select role_name from role_details where role_id = ?;";
     private static final String getAllRolesIdAssociatedWithUserQuery = "select role_id from user_to_role where user_id = ?;";
     private static final String updateRoleOfUserQuery = "update user_to_role set role_id = ? where user_id = ?;";
-    private static final String checkPasswordForUserbyIdQuery = "select user_password from user_details where user_id = ?";
     private static final String getAllPermissionIdsForUserByIdQuery = "select rtp.permission_id, role_id from role_to_permission rtp where role_id = (select role_id from user_to_role where user_id = ?);";
+    private static final String validateUserAgaistUserIdQuery = "select user_email,user_password,enabled from user_details where user_id = ?";
 
 
     //datasource object for connection pooling with JDBC
@@ -50,86 +54,94 @@ public class UserServiceImplementation implements UserService{
     private int sessionUserId =0;
     private int sessionRoleId =0;
     private Set<Integer> sessionPermissions = new HashSet<>();
-    boolean isSomeoneLoggedIn = false;
+    private LoginResponse loginResponse;
+
+
+
+    //this below methord is for jwt, use to validate user agaist database using its id.
+    @Override
+    public LoginPostOb fetchUserDetailFromUserId(int userId){
+        try{
+            Connection connection = dataSource.getConnection();
+            PreparedStatement statement = connection.prepareStatement(validateUserAgaistUserIdQuery);
+            statement.setInt(1,userId);
+            ResultSet validator = statement.executeQuery();
+            if(!validator.next()) return null;
+            if(validator.getBoolean("enabled") != true) return null;
+            LoginPostOb loginPostOb = new LoginPostOb();
+            loginPostOb.setUserEmail(validator.getString("user_email"));
+            loginPostOb.setUserPassword(validator.getString("user_password"));
+            RbacsApplication.printString("loginpost from jwt is " + loginPostOb.toString());
+            return loginPostOb;
+        }catch (SQLException e){
+            System.err.println(e.getMessage());
+            return null;
+        }
+    }
+
+
+
+
 
 
     @Override
-    public LoginDetails loginCheck(String userEmail, String userPassword){
-        if(isSomeoneLoggedIn) return null;
-        RbacsApplication.printString(userPassword + " " + userEmail);
-        try {
+    public LoginResponse loadUserByEmailId(String emailId){
+        try{
             Connection connection = dataSource.getConnection();
             PreparedStatement statement = connection.prepareStatement(checkExistingUserQuery);
-            statement.setString(1, userEmail);
-            ResultSet checkExistingUser = null;
-            try{
-                checkExistingUser = statement.executeQuery();
-                if(!checkExistingUser.next()) {  //will go inside only if user does not exist.
-                    LoginDetails loginDetails = new LoginDetails();
-                    loginDetails.setIsUserExist(false);
-                    loginDetails.setAnyMessage("bad credentials");
-                }else if(!userPassword.equals(checkExistingUser.getString("user_password"))){
-                    LoginDetails loginDetails = new LoginDetails();
-                    loginDetails.setIsUserExist(true);
-                    loginDetails.setAnyMessage("bad credentials");
-                    return loginDetails;
-                }
+            statement.setString(1,emailId);
+            ResultSet resultSet = statement.executeQuery();
+            if(!resultSet.next()) {
+                RbacsApplication.printString("result set foung empty");
+                return null;
+            }
+            if(resultSet.getBoolean("enabled") == false) {
+                RbacsApplication.printString("user found disabled");
+                return null;
+            }
+            LoginResponse loginResponseObjet = LoginResponse.builder().build();
+            loginResponseObjet.setUserEmailId(emailId);
+            loginResponseObjet.setUserPassword(resultSet.getString("user_password"));
+            loginResponseObjet.setUserId(resultSet.getInt("user_id"));
+            statement = connection.prepareStatement(getAllPermissionIdsForUserByIdQuery);
+            try {
+                statement.setInt(1, loginResponseObjet.getUserId());
+                ResultSet resultSet1 = statement.executeQuery();
+                if(!resultSet1.next()) return null;
+                loginResponseObjet.setUserRoleId(resultSet1.getInt("role_id"));
+                HashSet<String> permissionIds = new HashSet<>();
+                do{
+                    permissionIds.add(String.valueOf(resultSet1.getInt("permission_id")));
+                }while(resultSet1.next());
+                loginResponseObjet.setUserPermissionId(permissionIds);
+                RbacsApplication.printUserLogin(loginResponseObjet);
+                sessionPermissions.clear();
+                for(String temp : loginResponseObjet.getUserPermissionId()) sessionPermissions.add(Integer.valueOf(temp));
+                RbacsApplication.printString("session user id = " + sessionUserId + " session role id = " + sessionRoleId + "session permissions = ");
+                RbacsApplication.printSet(sessionPermissions);
+                loginResponse = loginResponseObjet;
+                connection.close();
+                RbacsApplication.printString("this from userServiceimplentation not from session service");
+                return loginResponseObjet;
             }catch (SQLException e){
                 e.printStackTrace();
-                RbacsApplication.printString("empty result set verified");
-                System.err.println("empry set" + e.getMessage());
             }
-            if(!checkExistingUser.getBoolean("enabled")) {
-                LoginDetails loginDetails = new LoginDetails();
-                loginDetails.setIsEnabledToLogin(false);
-                loginDetails.setAnyMessage("You don't have access to login in");
-                return loginDetails;
-            }
-            LoginDetails loginDetails = new LoginDetails();
-            loginDetails.setIsUserExist(true);
-            loginDetails.setIsEnabledToLogin(true);
-            sessionUserId = checkExistingUser.getInt("user_id");
-            statement = connection.prepareStatement(getAllPermissionIdsForUserByIdQuery);
-            statement.setInt(1, sessionUserId);
-            ResultSet permissionList = statement.executeQuery();
-            if(!permissionList.next()) {
-                loginDetails.setAnyMessage("This user is not associated with a role");
-                return loginDetails;
-            }
-            sessionRoleId = permissionList.getInt("role_id");
-            RbacsApplication.printString("role_id = " + sessionRoleId);
-            do{
-                loginDetails.getPermissionList().add(permissionList.getInt("permission_id"));
-            }while (permissionList.next());
-            for(Integer a : loginDetails.getPermissionList()) sessionPermissions.add(a);
-            RbacsApplication.printSet(sessionPermissions);
-            isSomeoneLoggedIn=true;
-            loginDetails.setAnyMessage("Successfully logged in");
-            return loginDetails;
         }catch (SQLException e){
             e.printStackTrace();
-            System.err.println(e.getMessage());
         }
         return null;
     }
 
 
+public LoginResponse getUserLogin(){
+        return this.loginResponse;
+}
 
-
-    @Override
-    public Boolean logout(){
-        sessionPermissions.clear();
-        sessionUserId=0;
-        sessionRoleId=0;
-        isSomeoneLoggedIn = false;
-        return true;
-    }
 
     //function to display list of users with their roles, if one user have multiple role then it will return separate row for that.
     //one row with first role, another row with second role and so on.
     @Override
     public List<User> getAllUsers() {
-        if(!sessionPermissions.contains(2)) return null;
         try{
             Connection connection = dataSource.getConnection();
             PreparedStatement preparedStatement = connection.prepareStatement(getAllUsersQuery);
@@ -162,7 +174,6 @@ public class UserServiceImplementation implements UserService{
         return null;
     }
 
-
     @Override
     public Boolean checkEmailAlreadyExist(String emailId){
         try{
@@ -180,13 +191,12 @@ public class UserServiceImplementation implements UserService{
 
 
     //this function is to add a row in user_to_role table.
-    public int addUserToRole(int user_id, int role_id) {
+    public int addNewRoleToUser(int user_id, int role_id) {
         try {
             Connection connection = dataSource.getConnection();
             PreparedStatement statement2 = connection.prepareStatement(addUserRoleQuery);
             statement2.setInt(1, user_id);
             statement2.setInt(2, role_id);
-            RbacsApplication.check3(user_id,role_id);
             return statement2.executeUpdate();  //this returns int, if 1 => means user with that role saved, else check inputs.
         }catch (SQLException e){
             System.err.println(e.getMessage());
@@ -195,87 +205,10 @@ public class UserServiceImplementation implements UserService{
     }
 
 
-    
-
-    //-----------------------------not using this function now---------------------
-    //this function is for adding new and existing users with new role..
-    //if an user is already added with role 1, second time it will only update in user_to_role table.
-    //so there will be no duplicate entry for same user in user_detals table.
-    @Override
-    public String addUser(User user) {
-        try {
-            Connection connection = dataSource.getConnection();
-            PreparedStatement statement = connection.prepareStatement(checkExistingUserQuery); //this statement is for checking user
-            // already exist in table or not, if exist then we will update only in user to role talbe, else we will add user first
-            // in user table and then add in user to role table accordingly.
-
-            //if a user is already exist in user_details table, and now we are adding it again with a different role,
-            //so with help of user's email, we are cheking it. if email id is already there in user table then only
-            //we can assign it new role and make a new entry in user_to_role table.
-            //if we add new user with same email, it won't allow to add more than one user with same email.
-
-            statement.setString(1,user.getUserEmail());
-            ResultSet check = statement.executeQuery();
-
-            if(check.next()) {  //this will to check whether user already exist or not. so if user already exit apan only change user_to_role table.
-                RbacsApplication.printString("inside user found check block and user_id = " + check.getInt("user_id"));
-                int rowsAffected = addUserToRole(check.getInt("user_id"),user.getUserRoleId());
-                if(rowsAffected == 1) return "User added with new role successfully";
-                else return "user adding with new role failed";
-            }
-            else{
-                RbacsApplication.printString("count = 0, no such user exist already");
-            }
-        }catch (SQLException e){
-            System.err.println(e.getMessage());
-        }
-        try{  //this try block is adding user into user_details table, not in user to role. for that we have created a function in this.
-            Connection connection = dataSource.getConnection();
-            PreparedStatement statement = connection.prepareStatement(addUserDetailQuery,PreparedStatement.RETURN_GENERATED_KEYS);
-            statement.setString(1, user.getUserStatus()); // Status
-            statement.setString(2, user.getUserEmail()); // userEmail
-            statement.setString(3, user.getUserFirstName()); // userFirstName
-            statement.setString(4, user.getUserLastName()); // userLastName
-            statement.setString(5, user.getUserPassword()); // userPassword
-            statement.setString(6, user.getUserPhoneNumber()); // userPhoneNumber
-            int rowsAffected = statement.executeUpdate(); //adding details into user table, user_id is automatically generating here.
-            //now user is added to user table, ab w.r.t role, adding in user_to_role table
-            if(rowsAffected == 0) return "adding user failed";
-            int autogeneratedUserId = 0;
-            try{
-                ResultSet generatedKeys = statement.getGeneratedKeys();  //this methord is pointing to generated keys column. not to the
-                                                                         // exact row where key is located in database.
-                generatedKeys.next();     //this statement will make it point to the cell where actually our key is present.
-                autogeneratedUserId = generatedKeys.getInt(1);      //with help of this, we are retrive that key into our int variable.
-                RbacsApplication.printString("autogerateduserid is " + autogeneratedUserId);  //checking whether we receive actual key in console
-            }catch (SQLException e){
-                System.err.println(e.getMessage() );
-            }
-            user.setUserId(autogeneratedUserId);
-            RbacsApplication.check2(user); //this check is to print received user.
-
-            statement = connection.prepareStatement(fetchRoleIdFromRoleNameQuery);
-            statement.setString(1,user.getUserRoleName());
-            ResultSet roleName = statement.executeQuery();
-            roleName.next();
-            //fetched user's auto generated user_id here and then adding it to user_id,role_id table to set its role there.
-            int rowsAffected2 = addUserToRole(autogeneratedUserId,roleName.getInt("role_id")); //saving in user to role table.
-            //now two rows has been added, one in user table and another in user_to_role
-            if(rowsAffected + rowsAffected2>1) return "New user saved successfully";
-            else return "New user did not saved";
-
-        }catch (SQLException e){
-            System.err.println(e.getMessage());
-        }
-        return "user adding into DB failed";
-    }
-
-
 
     //function to add new user from now onwards
     @Override
     public String addNewUser(User user){
-        if(!sessionPermissions.contains(1)) return "You don't have permission to create a user\n";
         if(checkEmailAlreadyExist(user.getUserEmail())) return "TRY WITH A DIFFERENT EMAIL";
         Connection connection = null;
         try{
@@ -362,8 +295,7 @@ public class UserServiceImplementation implements UserService{
     }
 
 
-    public String updateUser2(User user, int id){
-        if(!sessionPermissions.contains(3)) return "YOU DON'T HAVE PERMISSION TO UPDATE";
+    public String updateUser(User user, int id){
         Connection connection = null;
         try{
             connection  = dataSource.getConnection();
@@ -405,97 +337,16 @@ public class UserServiceImplementation implements UserService{
     }
 
 
-    @Override
-    public String updateUser(User user, int id) {
-        int rowsAffected2 = 0 ;
-        int rowsAffected = 0;
-        try{
-            Connection connection = dataSource.getConnection();
-            PreparedStatement statementForOldUser = connection.prepareStatement(getExistingUserDetailsQuery);
-            statementForOldUser.setInt(1,id);
-            User existingUser = new User();    //creating a temporary object to store existing details
-            ResultSet existingUserFetched = statementForOldUser.executeQuery();  //this result set contains details of existing user with that ID
-            existingUserFetched.next();  //moving cursor to actual details
-            existingUser.setUserId(id);   //setting properties in temporary object that is storing existing user
-            existingUser.setUserPhoneNumber(existingUserFetched.getString("user_phone_number"));
-//            existingUser.setUserEmail(existingUserFetched.getString("user_email"));
-            existingUser.setUserStatus(existingUserFetched.getString("status"));
-            existingUser.setUserFirstName(existingUserFetched.getString("user_first_name"));
-            existingUser.setUserPassword(existingUserFetched.getString("user_password"));
-            existingUser.setUserRoleId(existingUserFetched.getInt("role_id"));
-            existingUser.setUserLastName(existingUserFetched.getString("user_last_name"));
-            PreparedStatement statement = connection.prepareStatement(updateInUserDetailsQuery);
-            RbacsApplication.printString("jo user frontend se pass hua");
-            RbacsApplication.check2(user);
-            RbacsApplication.printString("jo user existing tha with id = "+id);
-            RbacsApplication.check2(existingUser);
-            RbacsApplication.printString("id = "+id);
-            //check whether passed user has all that details or not and then send
-            String userStatus = user.getUserStatus();
-            if(userStatus == null) userStatus = existingUser.getUserStatus();
-            String userPhoneNumber = user.getUserPhoneNumber();
-            if(userPhoneNumber == null) userPhoneNumber = existingUser.getUserPhoneNumber();
-            String userFirstName = user.getUserFirstName();
-            if(userFirstName == null) userFirstName = existingUser.getUserFirstName();
-            String userLastName = user.getUserLastName();
-            if(userLastName == null) userLastName = existingUser.getUserLastName();
-            String userEmail = user.getUserEmail();
-            String userPassword = user.getUserPassword();
-            if(userPassword == null) userPassword = existingUser.getUserPassword();
-            statement.setString(1, userStatus); // Status
-//            statement.setString(2, userEmail); // userEmail
-            statement.setString(2, userFirstName); // userFirstName
-            statement.setString(3, userLastName); // userLastName
-            statement.setString(4, userPassword); // userPassword
-            statement.setString(5, userPhoneNumber); // userPhoneNumber
-            statement.setInt(6,id);
-            rowsAffected = statement.executeUpdate();
-            if(rowsAffected == 0) return " User not exist to update, add user first then update.";
-            RbacsApplication.printString("rowsaff1 = " + rowsAffected);
-            statement = connection.prepareStatement(fetchRoleIdFromRoleNameQuery);
-            statement.setString(1,user.getUserRoleName());
-            RbacsApplication.printString(user.getUserRoleName());
-            ResultSet fetchedRoleId = statement.executeQuery();
-//            RbacsApplication.printString("roleid fetching query executed" + fetchedRoleId);
-            if(!fetchedRoleId.next()) return "invalid role name Passed. check role_name from role_details table!!";
-            int roleIdToAdd = fetchedRoleId.getInt("role_id");
-            RbacsApplication.printString("roleIDTOADD = "+roleIdToAdd);
-            statement = connection.prepareStatement(updateRoleOfUserQuery);
-            statement.setInt(1,roleIdToAdd);
-            statement.setInt(2,id);
-            RbacsApplication.printString("adding role to user with id = "+id  + " and role_id = " + roleIdToAdd);
-            try {
-                rowsAffected2 = statement.executeUpdate();
-            }
-            catch (SQLException e){
-                System.err.println(e.getMessage());
-            }
-
-
-        }catch (SQLException e){
-            System.err.println(e.getMessage());
-
-        }
-        if(rowsAffected + rowsAffected2>0) return "user updated successfully :) ";
-        else return "error found, check foreign key, sql query, provided json object";
-    }
-
-
 
     @Override
     public User getParticularUserById(int id){
-        boolean allow = false;
-        if(sessionPermissions.contains(7)) allow = true;
-        if(sessionPermissions.contains(5) && !sessionPermissions.contains(7) && id == sessionUserId) allow = true;
-        if(!allow) return null;
         try{
             Connection connection = dataSource.getConnection();
             PreparedStatement statementForOldUser = connection.prepareStatement(getExistingUserDetailsQuery);
             statementForOldUser.setInt(1,id);
             User existingUser = new User();
             ResultSet existingUserFetched = statementForOldUser.executeQuery();
-            existingUserFetched.next();
-            if(existingUserFetched == null) {
+            if(!existingUserFetched.next()) {
                 return null;
             }
             existingUser.setUserId(id);
@@ -555,7 +406,6 @@ public class UserServiceImplementation implements UserService{
     //this function is to delete user
     @Override
     public String deleteUser(int id) {
-        if(!sessionPermissions.contains(4)) return "YOU DONT HAVE PERMISSION TO PERFORM THIS OPERATION";
         try{
             Connection connection = dataSource.getConnection();
             PreparedStatement statement = connection.prepareStatement(deleteUserInUserToRoleQuery);
@@ -580,7 +430,6 @@ public class UserServiceImplementation implements UserService{
     // and then returns role_name from hashmap. so we dont want to read from table(roles) for every entry.
     @Override
     public List<UserDashboard> getAllUserDashboard(){
-        if(!sessionPermissions.contains(6)) return null;
         try{
             Connection connection = dataSource.getConnection();
             PreparedStatement preparedStatement = connection.prepareStatement(userDashboardQuery);

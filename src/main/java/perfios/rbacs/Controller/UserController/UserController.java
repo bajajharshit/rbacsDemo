@@ -1,28 +1,30 @@
 package perfios.rbacs.Controller.UserController;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.validation.BindingResult;
-import org.springframework.validation.Errors;
 import org.springframework.validation.ObjectError;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
-import perfios.rbacs.Model.LoginDetails.LoginDetails;
+import org.springframework.web.servlet.ModelAndView;
+import perfios.rbacs.JwtToken.JwtTokenService;
 import perfios.rbacs.Model.Users.User;
 import perfios.rbacs.Model.Users.UserDashboard;
 import perfios.rbacs.RbacsApplication;
 import perfios.rbacs.Repository.UserRepository.UserService;
+import perfios.rbacs.Security.CustomAuthenticationProvider;
+import perfios.rbacs.Security.UserDetailsServiceImplementation;
 
 import java.util.List;
-import java.util.SimpleTimeZone;
 
 
 @CrossOrigin
@@ -33,11 +35,17 @@ public class UserController {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    UserDetailsServiceImplementation userDetailsServiceImplementation;
+
+    @Autowired
+    CustomAuthenticationProvider customAuthenticationProvider;
+
 
     //this is sample functin to check
     @RequestMapping("userhome")
     public ResponseEntity<String> userhome() {
-        return ResponseEntity.ok("user controller working af");
+        return ResponseEntity.ok("user controller working and this link is not protected");
     }
 
     //this is for user dashboard (user_id, user email, user role)
@@ -49,35 +57,19 @@ public class UserController {
     }
 
 
-    @GetMapping("/login")
-    public ResponseEntity<?> loginCheck(@RequestParam String userEmail, @RequestParam String userPassword ){
-        boolean areParamValid = true;
-        StringBuilder validationErrors = new StringBuilder();
-        validationErrors.append("STATUS : 400 BAD REQUEST(INVALID CREDENTIALS)\n");
-        String regexExpression = "^[\\w.-]+@[a-zA-Z_-]+?\\.[a-zA-Z]{2,3}$";
-        if(userPassword.length()<6 || userPassword.length()>20) {
-            validationErrors.append("Password should be between 6 to 20 characters\n");
-            areParamValid = false;
-        }
-        if(!userEmail.matches(regexExpression) ) {
-            validationErrors.append("Email ID should be of form user@example.com");
-            areParamValid = false;
-        }
-        if(!areParamValid) return ResponseEntity.badRequest().body(validationErrors);
-        LoginDetails loginDetails = userService.loginCheck(userEmail, userPassword);
-        if(loginDetails == null) return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body("Already logged in. Logout first");
-        HttpHeaders httpHeaders = new HttpHeaders();
-        httpHeaders.add("Content-type","JSON");
-        return ResponseEntity.ok(loginDetails);
+
+    @GetMapping("/checking")
+    public void check(){
+        RbacsApplication.printString("-----------this are session permissions----------- ");
+        RbacsApplication.printString(SecurityContextHolder.getContext().toString());
     }
 
 
-
-
-    @GetMapping("/logot")
-    public Boolean logout(){
-        return userService.logout();
+    @GetMapping("/homepage")
+    public ModelAndView homepage(){
+        return new ModelAndView("homepage");
     }
+
 
     //this methord receives a json of user model type and adds user into user_details table and user_to_role table correspondingly
     @PostMapping("user")
@@ -117,10 +109,19 @@ public class UserController {
     //this methord returns user details for a particular user, pass user_id in URL's end point
     @GetMapping("user/{id}")
     public ResponseEntity<?> getParticularUserById(@PathVariable int id){
+        RbacsApplication.printString("inside view all controller");
         User user = userService.getParticularUserById(id);
         if(user == null) return ResponseEntity.badRequest().body("THIS REQUEST DOES NOT EXIST");
         return ResponseEntity.ok(user);
     }
+
+    @GetMapping("user/self/{userId}")
+    public ResponseEntity<?> getOnlySelfDetails(@PathVariable int userId){
+        User user = userService.getParticularUserById(userId);
+        if(user == null) return ResponseEntity.badRequest().body("THIS REQUEST DOES NOT EXIST");
+        return ResponseEntity.ok(user);
+    }
+
 
     //this methord is for unassinging a role to a user
     @DeleteMapping("user/{user_id}/role/{role_id}")
@@ -128,10 +129,9 @@ public class UserController {
         return userService.unassignUserRole(user_id,role_id);
     }
 
-    //this methord is for updating a user, it does not update user's role. for that another methord is created.
-
+    //this methord is for updating a user
     @PutMapping("user/{id}")
-    public ResponseEntity<String> updateUser2(@PathVariable int id, @Valid @RequestBody User user, BindingResult bindingResult) {
+    public ResponseEntity<String> updateUser(@PathVariable int id, @Valid @RequestBody User user, BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
             StringBuilder errorMessage = new StringBuilder();
             errorMessage.append("400 BAD REQUEST\nThis request cannot be fulfilled due to validation errors:\n");
@@ -142,7 +142,7 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorMessage.toString());
         }
 
-        String result = userService.updateUser2(user, id);
+        String result = userService.updateUser(user, id);
         return ResponseEntity.ok(result);
     }
 

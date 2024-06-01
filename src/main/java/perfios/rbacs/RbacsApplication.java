@@ -2,12 +2,13 @@ package perfios.rbacs;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import perfios.rbacs.Model.LoginResponse.LoginResponse;
 import perfios.rbacs.Model.Users.User;
 
 import java.util.HashMap;
 import java.util.Set;
 
-@SpringBootApplication
+@SpringBootApplication()
 public class RbacsApplication {
 
 	public static void main(String[] args) {
@@ -29,6 +30,9 @@ public class RbacsApplication {
 
 	public static void check2(User user){
 		System.out.println(user);
+	}
+	public static void printUserLogin(LoginResponse loginResponse){
+		System.out.println(loginResponse);
 	}
 
 	public static void check3(int a, int b){

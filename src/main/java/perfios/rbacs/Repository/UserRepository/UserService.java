@@ -1,15 +1,14 @@
 package perfios.rbacs.Repository.UserRepository;
 
 
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import perfios.rbacs.Model.LoginPost.LoginPostOb;
 import perfios.rbacs.Model.LoginResponse.LoginResponse;
+import perfios.rbacs.Model.LoginResponse.LoginResponse2;
 import perfios.rbacs.Model.Users.User;
 import perfios.rbacs.Model.Users.UserDashboard;
 
 import java.util.List;
-import java.util.Set;
 
 @Service
 public interface UserService {
@@ -27,4 +26,15 @@ public interface UserService {
     LoginResponse loadUserByEmailId(String emailId);
     LoginResponse getUserLogin();
     LoginPostOb fetchUserDetailFromUserId(int userId);
+    LoginResponse2 fetchUserDetailsFromUserId2(int userId , String userEmail);
+    void fillAdminPermissions();
+    void printAdminPermissionMap();
+    String getRoleName(int roleId);
+    String fillRoleDetails();
+    boolean getPermission(String uuid, String type);
+    LoginResponse2 loadUserByEmailId2(String emailId);
+    void printRoleDetails();
+
+    public int getVerifiedUserId() ;
+    public void resetVerifiedUserId();
 }

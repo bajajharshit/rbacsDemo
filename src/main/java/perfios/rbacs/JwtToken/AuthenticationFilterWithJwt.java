@@ -1,45 +1,47 @@
 package perfios.rbacs.JwtToken;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.env.RandomValuePropertySource;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.web.FilterInvocation;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import perfios.rbacs.Model.LoginPost.LoginPostOb;
+import perfios.rbacs.Model.LoginResponse.LoginResponse2;
 import perfios.rbacs.RbacsApplication;
 import perfios.rbacs.Repository.UserRepository.UserService;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-//@Component
-public class JwtAuthenticationFilter extends OncePerRequestFilter {
+@Component
+public class AuthenticationFilterWithJwt extends OncePerRequestFilter {
 
 
     @Autowired
-    JwtTokenService jwtTokenService;
+    JwtTokenService2 jwtTokenService;
 
     @Autowired
     UserService userService;
     UserDetails userDetails;
 
+
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        if(SecurityContextHolder.getContext() != null) RbacsApplication.printString("--------" + SecurityContextHolder.getContext().toString());
 
 
         if(request.getRequestURI().startsWith("/loginjwt")) {
+            RbacsApplication.printString("here");
             filterChain.doFilter(request,response);
             return;
         }
@@ -67,34 +69,39 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        int userId = jwtTokenService.extractUserIdFromJwtToken(jwt);
+        int userId = jwtTokenService.extractUserIdFromJwt(jwt);
+        String userEmailId = jwtTokenService.extractUserEmailIdFromJwt(jwt);
 
-        int roleId = jwtTokenService.getUserRoleId(jwt);
+        RbacsApplication.printString("Securitycontextholder = "+SecurityContextHolder.getContext());
+        RbacsApplication.printString("userid = " + userId + " email id = " + userEmailId);
 
-        if(userId != -1 && roleId != -1 && SecurityContextHolder.getContext().getAuthentication() == null){
-            LoginPostOb loginPostOb = userService.fetchUserDetailFromUserId(userId);
-            if(loginPostOb == null) {
+        if(userId != -1 && userEmailId != null && SecurityContextHolder.getContext().getAuthentication() == null){
+            LoginResponse2 loginResponse2 = userService.fetchUserDetailsFromUserId2(userId ,  userEmailId);
+            if(loginResponse2 == null) {
                 return;
             }
+            userService.resetVerifiedUserId();
 
-            List<GrantedAuthority> authorities = jwtTokenService.getAllUserAuthorities(jwt);
-            RbacsApplication.printString("role_id = " + roleId);
-            authorities = jwtTokenService.addRoleInAuthorities(authorities,roleId);
+            List<GrantedAuthority> authorities = new ArrayList<>();
+            String role = "ROLE_" + loginResponse2.getRoleName().toUpperCase();
+            RbacsApplication.printString("role_name" + role);
+            authorities.add(new SimpleGrantedAuthority(role));
             userDetails = new User(
-                    loginPostOb.getUserEmail(),
-                    loginPostOb.getUserPassword(),
+                    loginResponse2.getUserEmail(),
+                    loginResponse2.getUserPassword(),
                     authorities
             );
 
             UsernamePasswordAuthenticationToken authenticationToken =
-                    new UsernamePasswordAuthenticationToken(userDetails, loginPostOb.getUserPassword(), userDetails.getAuthorities());
+                    new UsernamePasswordAuthenticationToken(userDetails, loginResponse2.getUserPassword(), userDetails.getAuthorities());
             authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authenticationToken);
             RbacsApplication.printString("printing securitycontextholder after verification of jwt = \n" + SecurityContextHolder.getContext());
             filterChain.doFilter(request,response);
             return;
+
         }
         filterChain.doFilter(request,response);
-        return;
+
     }
 }

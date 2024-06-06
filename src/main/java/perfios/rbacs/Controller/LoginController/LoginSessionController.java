@@ -98,7 +98,7 @@ public class LoginSessionController {
 
         session.setAttribute("id",loginResponse.getUserId());
 
-        if(loginResponse.getUserPermissionId().contains("7")) session.setAttribute("viewAll",true);
+//        if(loginResponse.getUserPermissionId().contains("7")) session.setAttribute("viewAll",true);
 
         RbacsApplication.printString(loginResponse.toString());
         RbacsApplication.printString(authentication.toString());

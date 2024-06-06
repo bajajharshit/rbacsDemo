@@ -7,20 +7,22 @@ import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.logout.HeaderWriterLogoutHandler;
 import org.springframework.security.web.header.writers.ClearSiteDataHeaderWriter;
-import org.springframework.web.bind.annotation.RequestBody;
+import perfios.rbacs.JwtToken.AuthenticationFilterWithJwt;
 import perfios.rbacs.JwtToken.JwtAuthenticationFilter;
 import perfios.rbacs.RbacsApplication;
+import perfios.rbacs.Repository.UserRepository.UserService;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+    @Autowired
+    private UserService userService;
 
     @Autowired
     private UserDetailsServiceImplementation myUserDetailsService;
@@ -44,13 +46,24 @@ public class SecurityConfig {
         return customAuthenticationProvider;
     }
 
+//    @Autowired
+//    private JwtAuthenticationFilter jwtAuthenticationFilter;
+
     @Autowired
-    private JwtAuthenticationFilter jwtAuthenticationFilter;
+    private AuthenticationFilterWithJwt authenticationFilterWithJwt;
 
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+
+        //fill adminPermission map on starting of application
+        userService.fillAdminPermissions();
+        userService.printAdminPermissionMap();
+        userService.fillRoleDetails();
+        userService.printRoleDetails();
         RbacsApplication.printString("inside security filter chain");
+
+
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorize ->
@@ -64,12 +77,11 @@ public class SecurityConfig {
                                 .requestMatchers(HttpMethod.POST,"/loginjwt").permitAll()
                                 .requestMatchers(HttpMethod.GET,"/logoutjwt").permitAll()
                                 .requestMatchers(HttpMethod.GET,"/checking").permitAll()
-                                .requestMatchers(HttpMethod.POST, "/user").hasAuthority("1")
-                                .requestMatchers(HttpMethod.GET, "/user/dashboard").hasAuthority("6")
-                                .requestMatchers(HttpMethod.POST, "/user/{id}").hasAuthority("3")
-                                .requestMatchers(HttpMethod.GET, "/user/{id}").hasAuthority( "7")
-                                .requestMatchers(HttpMethod.GET,"user/self/{userId}").hasAuthority("5")
-                                .requestMatchers(HttpMethod.GET, "/user").hasAuthority("2")
+                                .requestMatchers(HttpMethod.POST, "/user").hasAuthority("1") //createUser
+                                .requestMatchers(HttpMethod.GET, "/user/dashboard").hasAuthority("6") //canViewUser's Dashboard
+                                .requestMatchers(HttpMethod.POST, "/user/{id}").hasAuthority("3") //UpdateUserWith{id}
+                                .requestMatchers(HttpMethod.GET, "/user/{id}").hasAnyAuthority( "5","7")  //5-> viewSelf & 7->ViewAll
+                                .requestMatchers(HttpMethod.GET, "/user").hasRole("ADMINISTRATOR")  //canViewListOfAllUsers
                                 .anyRequest().authenticated()
                 ).logout(logout ->
                         logout
@@ -79,14 +91,14 @@ public class SecurityConfig {
                                 .clearAuthentication(true)
                                 .invalidateHttpSession(true)
                                 .logoutSuccessUrl("/homepage"))
-                .exceptionHandling(exceptionHandling -> exceptionHandling
-                        .authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/login")))
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .authenticationProvider(authenticationProvider())
-                .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
-                        .userDetailsService(userDetailsService());
-
+//                .exceptionHandling(exceptionHandling -> exceptionHandling
+//                        .authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/loginjwt")))
+                .addFilterBefore(authenticationFilterWithJwt, UsernamePasswordAuthenticationFilter.class)
+//                .authenticationProvider(authenticationProvider())
+//                .sessionManagement(session -> session
+//                        .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+//                        .userDetailsService(userDetailsService())
+                ; //this semicolon represents end http
 
         return http.build();
     }

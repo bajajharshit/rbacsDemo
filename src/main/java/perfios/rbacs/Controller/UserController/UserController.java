@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpSession;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -41,6 +42,9 @@ public class UserController {
     @Autowired
     CustomAuthenticationProvider customAuthenticationProvider;
 
+    @Autowired
+    JwtTokenService jwtTokenService;
+
 
     //this is sample functin to check
     @RequestMapping("userhome")
@@ -58,10 +62,12 @@ public class UserController {
 
 
 
+
     @GetMapping("/checking")
     public void check(){
         RbacsApplication.printString("-----------this are session permissions----------- ");
-        RbacsApplication.printString(SecurityContextHolder.getContext().toString());
+        RbacsApplication.printString(SecurityContextHolder.getContext().getAuthentication().toString());
+        RbacsApplication.printString(String.valueOf(userService.getVerifiedUserId()));
     }
 
 
@@ -107,16 +113,39 @@ public class UserController {
 
 
     //this methord returns user details for a particular user, pass user_id in URL's end point
-    @GetMapping("user/{id}")
-    public ResponseEntity<?> getParticularUserById(@PathVariable int id){
-        RbacsApplication.printString("inside view all controller");
-        User user = userService.getParticularUserById(id);
-        if(user == null) return ResponseEntity.badRequest().body("THIS REQUEST DOES NOT EXIST");
-        return ResponseEntity.ok(user);
-    }
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<?> getOnlySelfDetails(@PathVariable int userId, HttpServletRequest request){
+        //get user id from session
+        //get user if from token
+        //if any one condition returns id that equals userId, then allow = true
+        //else don't allow to getdetails.
+        Boolean allow = false;
+        HttpSession session = request.getSession();
+        if(session.getAttribute("id")!=null){
+            if(session.getAttribute("id").equals(userId)) {
+                RbacsApplication.printString("inside session based, "+session.getAttribute("id"));
+                allow = true;
+            }
+        }
+        String AuthorizationHeader = request.getHeader("Authorization");
 
-    @GetMapping("user/self/{userId}")
-    public ResponseEntity<?> getOnlySelfDetails(@PathVariable int userId){
+        if(allow == false && AuthorizationHeader != null){
+            if(AuthorizationHeader.startsWith("Bearer")) {
+                String jwtToken = AuthorizationHeader.substring(7);
+                if(jwtTokenService.checkValidityOfJwtToken(jwtToken)){
+//                    allow = jwtTokenService.checkViewAllAuthorityFromToken(jwtToken);
+                    if (allow == false) {
+                        int userIdReceivedFromToken = jwtTokenService.extractUserIdFromJwtToken(jwtToken);
+                        if(userIdReceivedFromToken == userId) {
+                            RbacsApplication.printString("jwtBased & useridReceive = " + userIdReceivedFromToken);
+                            allow = true;
+                        }
+                    }
+                }
+            }
+        }
+        if(!allow) return ResponseEntity.badRequest().body("THIS REQUEST DOES NOT EXIST");
+
         User user = userService.getParticularUserById(userId);
         if(user == null) return ResponseEntity.badRequest().body("THIS REQUEST DOES NOT EXIST");
         return ResponseEntity.ok(user);

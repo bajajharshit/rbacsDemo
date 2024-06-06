@@ -3,8 +3,10 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+import org.springframework.validation.annotation.Validated;
 import perfios.rbacs.Model.LoginPost.LoginPostOb;
 import perfios.rbacs.Model.LoginResponse.LoginResponse;
+import perfios.rbacs.Model.LoginResponse.LoginResponse2;
 import perfios.rbacs.Model.Users.User;
 import perfios.rbacs.Model.Users.UserDashboard;
 import perfios.rbacs.RbacsApplication;
@@ -16,16 +18,17 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.concurrent.ArrayBlockingQueue;
 
 @Service
 public class UserServiceImplementation implements UserService{
 
 
     private static final String userDashboardQuery = "SELECT ud.user_id, ud.user_email, utr.role_id from user_details ud, user_to_role utr WHERE ud.user_id = utr.user_id;";
-    private static final String addUserDetailQuery = "INSERT INTO user_details (status, user_email, user_first_name, user_last_name, user_password, user_phone_number, enabled, is_super_admin, should_loan_auto_apply) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+    private static final String addUserDetailQuery = "INSERT INTO user_details (status, user_email, user_first_name, user_last_name, user_password, user_phone_number, enabled, is_super_admin, should_loan_auto_apply,alternate_username) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ? , ?);";
     private static final String checkExistingUserQuery = "select user_id,enabled,user_password from user_details where user_email = ?;";
     private static final String addUserRoleQuery = "insert into user_to_role(user_id,role_id) values(?,?);";
-    private static final String getAllUsersQuery = "select ud.user_id, ud.user_first_name, ud.user_last_name, ud.user_email, ud.user_password, ud.status, ud.user_phone_number, ud.enabled, ud.is_super_admin, ud.should_loan_auto_apply, utr.role_id from user_details ud, user_to_role utr where ud.user_id = utr.user_id order by utr.role_id; ";
+    private static final String getAllUsersQuery = "select ud.user_id, ud.user_first_name, ud.user_last_name, ud.user_email, ud.user_password, ud.status, ud.user_phone_number, ud.enabled, ud.is_super_admin, ud.should_loan_auto_apply, ud.alternate_username, utr.role_id from user_details ud, user_to_role utr where ud.user_id = utr.user_id order by utr.role_id; ";
     private static final String deleteUserInUserDetailsQuery = "delete from user_details where user_id = ?; ";
     private static final String deleteUserInUserToRoleQuery =  "delete from user_to_role where user_id = ?;";
     private static final String deleteUserRoleQuery = "delete from user_to_role where user_id = ? and role_id = ?";
@@ -33,12 +36,13 @@ public class UserServiceImplementation implements UserService{
     private static final String updateInUserDetailsQuery = "update user_details set status = ?, user_first_name = ?, user_last_name = ?, user_password = ?, user_phone_number = ? ,enabled = ?, is_super_admin = ?, should_loan_auto_apply = ? where user_id = ?;";
     private static final String checkNumberOfRolesAssociatedWithUserQuery = "select count(*) from user_to_role where user_id = ?;";
     private static final String fetchRoleIdAndRoleNameQuery = "select role_id,role_name from role_details";
-    private static final String getExistingUserDetailsQuery = "SELECT ud.user_id, ud.user_first_name, ud.user_last_name, ud.user_email, ud.user_password, ud.status, ud.user_phone_number, ud.enabled, ud.is_super_admin, ud.should_loan_auto_apply, utr.role_id FROM user_details ud, user_to_role utr WHERE ud.user_id = utr.user_id AND ud.user_id = ?;";
+    private static final String getExistingUserDetailsQuery = "SELECT ud.user_id, ud.user_first_name, ud.user_last_name, ud.user_email, ud.user_password, ud.status, ud.user_phone_number, ud.enabled, ud.is_super_admin, ud.should_loan_auto_apply, ud.alternate_username, utr.role_id FROM user_details ud, user_to_role utr WHERE ud.user_id = utr.user_id AND ud.user_id = ?;";
     private static final String fetchRoleNameFromRoleIdQuery = "select role_name from role_details where role_id = ?;";
     private static final String getAllRolesIdAssociatedWithUserQuery = "select role_id from user_to_role where user_id = ?;";
     private static final String updateRoleOfUserQuery = "update user_to_role set role_id = ? where user_id = ?;";
     private static final String getAllPermissionIdsForUserByIdQuery = "select rtp.permission_id, role_id from role_to_permission rtp where role_id = (select role_id from user_to_role where user_id = ?);";
     private static final String validateUserAgaistUserIdQuery = "select user_email,user_password,enabled from user_details where user_id = ?";
+    private static final String fetchAdminPermissionsQuery = "select permission_id, can_view, can_edit from role_to_permission_type where role_id = 1";
 
 
     //datasource object for connection pooling with JDBC
@@ -55,6 +59,129 @@ public class UserServiceImplementation implements UserService{
     private int sessionRoleId =0;
     private Set<Integer> sessionPermissions = new HashSet<>();
     private LoginResponse loginResponse;
+
+    int verifiedUserId = -1;
+
+
+    @Override
+    public int getVerifiedUserId(){
+        return this.verifiedUserId;
+    }
+
+    @Override
+    public void resetVerifiedUserId(){
+        this.verifiedUserId = -1;
+    }
+
+    class ViewAndEdit{
+        boolean canView = false;
+        boolean canEdit = false;
+
+        ViewAndEdit(boolean cv, boolean ce){
+            if(cv == false){
+                this.canEdit = false;
+                this.canView = false;
+                return;
+            }
+            this.canView = cv;
+            this.canEdit = ce;
+        }
+
+        public boolean isCanView() {return this.canView;}
+        public boolean isCanEdit() {return this.canEdit;}
+    }
+
+
+    private HashMap<String,ViewAndEdit> forAdminPermissions = new HashMap<>();
+
+    private HashMap<Integer,String > roleDetails = new HashMap<>();
+
+    /*
+    SELECT rtpt.*,
+    (SELECT pt.permission_name FROM permission_type pt WHERE pt.permission_uuid = rtpt.permission_uuid)
+    AS permission_name FROM role_to_permission_type rtpt;
+
+     */
+
+    @Override
+    public void printRoleDetails(){
+        for(var entry : roleDetails.entrySet()){
+            RbacsApplication.printString(entry.toString());
+        }
+    }
+
+
+
+
+    @Override
+    public String getRoleName(int roleId){
+        String role = roleDetails.get(roleId);
+        String roleName = "ROLE_" + role.toUpperCase();
+        return roleName;
+
+    }
+
+
+    @Override
+    public String fillRoleDetails(){
+        try{
+            Connection connection = dataSource.getConnection();
+            PreparedStatement statement = connection.prepareStatement(fetchRoleIdAndRoleNameQuery);
+            ResultSet roles = statement.executeQuery();
+            while(roles.next()){
+                roleDetails.put(roles.getInt("role_id"),roles.getString("role_name"));
+            }
+        }catch (SQLException e){
+            System.err.println(e.getMessage());
+        }
+        return roleDetails.toString();
+    }
+
+
+    @Override
+    public void fillAdminPermissions(){
+        try{
+            Connection connection = dataSource.getConnection();
+            PreparedStatement statement = connection.prepareStatement(fetchAdminPermissionsQuery);
+            ResultSet adminPermission = statement.executeQuery();
+            while(adminPermission.next()){
+                String uuid = adminPermission.getString("permission_id");
+                boolean canEdit = adminPermission.getBoolean("can_edit");
+                boolean canView = adminPermission.getBoolean("can_view");
+                ViewAndEdit viewAndEdit = new ViewAndEdit(canView,canEdit);
+                forAdminPermissions.put(uuid,viewAndEdit);
+            }
+        }catch (SQLException e){
+            System.err.println(e.getMessage());
+        }
+    }
+
+    @Override
+    public boolean getPermission(String uuid, String type){
+        if(forAdminPermissions.containsKey(uuid) == false) return false;
+        ViewAndEdit viewAndEdit = forAdminPermissions.get(uuid);
+        if(type == "view") return viewAndEdit.canView;
+        else return viewAndEdit.canEdit;
+    }
+
+
+
+    @Override
+    public void printAdminPermissionMap(){
+        if(this.forAdminPermissions == null) RbacsApplication.printString("admin permission found null");
+        RbacsApplication.printString("permission_id|can view | can edit |");
+        for(var entry : forAdminPermissions.entrySet()){
+            String key = entry.getKey();
+            ViewAndEdit viewAndEdit = entry.getValue();
+            RbacsApplication.printString(key+ "            | " + "  " + viewAndEdit.canView + " |  " + viewAndEdit.canEdit);
+        }
+    }
+
+
+
+
+
+
 
 
 
@@ -80,6 +207,81 @@ public class UserServiceImplementation implements UserService{
     }
 
 
+    @Override
+    public LoginResponse2 fetchUserDetailsFromUserId2(int userId , String userEmail){
+        try{
+            Connection connection = dataSource.getConnection();
+            PreparedStatement preparedStatement = connection.prepareStatement(validateUserAgaistUserIdQuery);
+            preparedStatement.setInt(1,userId);
+            ResultSet validatedUser = preparedStatement.executeQuery();
+            if(!validatedUser.next()) return null;
+            if(validatedUser.getString("user_email").equals(userEmail) == false) return null;
+            int roleId = -1;
+            try{
+                PreparedStatement statement = connection.prepareStatement(getAllRolesIdAssociatedWithUserQuery);
+                statement.setInt(1,userId);
+                ResultSet roleIdRS = statement.executeQuery();
+                if(!roleIdRS.next()) return null;
+                roleId = roleIdRS.getInt("role_id");
+            }catch (SQLException e){
+                System.err.println(e.getMessage());
+            }
+            LoginResponse2 loginResponse = LoginResponse2.builder().build();
+            loginResponse.setUserRoleId(roleId);
+            loginResponse.setRoleName(roleDetails.get(roleId));
+            loginResponse.setUserPassword(validatedUser.getString("user_password"));
+            loginResponse.setUserEmail(userEmail);
+            loginResponse.setUserId(userId);
+            return loginResponse;
+        }catch (SQLException e){
+            System.err.println(e.getMessage());
+        }
+        return null;
+    }
+
+
+
+    @Override
+    public LoginResponse2 loadUserByEmailId2(String emailId){
+        try{
+            Connection connection = dataSource.getConnection();
+            PreparedStatement statement = connection.prepareStatement(checkExistingUserQuery);
+            statement.setString(1,emailId);
+            ResultSet loadedUser = statement.executeQuery();
+            if(!loadedUser.next()) return null;
+            RbacsApplication.printString("here this point 1");
+            if(loadedUser.getBoolean("enabled") == false) return null;
+            int userId = loadedUser.getInt("user_id");
+            RbacsApplication.printString("user id = " + userId);
+            int userRoleId = -1;
+            try{
+                PreparedStatement statement1 = connection.prepareStatement(getAllRolesIdAssociatedWithUserQuery);
+                statement1.setInt(1,userId);
+                ResultSet roleIdSet = statement1.executeQuery();
+                if(!roleIdSet.next()) return null;
+                userRoleId = roleIdSet.getInt("role_id");
+            }catch (SQLException e){
+                System.err.println(e.getMessage());
+            }
+
+            LoginResponse2 loginResponse = LoginResponse2.builder().build();
+            loginResponse.setUserPassword(loadedUser.getString("user_password"));
+            loginResponse.setRoleName(roleDetails.get(userRoleId));
+            loginResponse.setUserId(userId);
+            loginResponse.setUserEmail(emailId);
+            loginResponse.setUserRoleId(userRoleId);
+            if(verifiedUserId != -1) RbacsApplication.printString("this userid technique fail");
+            verifiedUserId = userId;
+            return loginResponse;
+
+
+        }catch (SQLException e){
+            System.err.println(e.getMessage());
+        }
+        return null;
+    }
+
+
 
 
 
@@ -92,7 +294,7 @@ public class UserServiceImplementation implements UserService{
             statement.setString(1,emailId);
             ResultSet resultSet = statement.executeQuery();
             if(!resultSet.next()) {
-                RbacsApplication.printString("result set foung empty");
+                RbacsApplication.printString("result set found empty");
                 return null;
             }
             if(resultSet.getBoolean("enabled") == false) {
@@ -159,6 +361,7 @@ public LoginResponse getUserLogin(){
                 newUser.setEnabled(resultSet.getBoolean("enabled"));
                 newUser.setIsSuperAdmin(resultSet.getBoolean("is_super_admin"));
                 newUser.setShouldLoanAutoApply(resultSet.getBoolean("should_loan_auto_apply"));
+                newUser.setAlternateUsername(resultSet.getString("alternate_username"));
                 PreparedStatement userRoleFetched = connection.prepareStatement(fetchRoleNameFromRoleIdQuery);
                 userRoleFetched.setInt(1,resultSet.getInt("role_id"));
                 ResultSet roleNameFetched = userRoleFetched.executeQuery();
@@ -224,6 +427,7 @@ public LoginResponse getUserLogin(){
             statement.setBoolean(7,user.getEnabled()); //enable
             statement.setBoolean(8, user.getIsSuperAdmin()); //supradmin
             statement.setBoolean(9,user.getShouldLoanAutoApply()); //loanautoaply
+            statement.setString(10,user.getAlternateUsername());
             int rowsAffected = statement.executeUpdate();
             if(rowsAffected == 0) return "Adding User Failed. :(";
             int autoGeneratedUserId = 0;
@@ -359,6 +563,7 @@ public LoginResponse getUserLogin(){
             existingUser.setEnabled(existingUserFetched.getBoolean("enabled"));
             existingUser.setIsSuperAdmin(existingUserFetched.getBoolean("is_super_admin"));
             existingUser.setShouldLoanAutoApply(existingUserFetched.getBoolean("should_loan_auto_apply"));
+            existingUser.setAlternateUsername(existingUserFetched.getString("alternate_username"));
             RbacsApplication.printString("user after fetching from user_details;");
             RbacsApplication.check2(existingUser);
              //got everything except role array.

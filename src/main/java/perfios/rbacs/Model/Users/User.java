@@ -31,6 +31,10 @@ public class User {
     @Size(min = 10, max =  10, message = "number should be of 10 digits")
     private String userPhoneNumber;
 
+    @NotBlank(message = "alternateUsername can't be empty")
+    @Size(min = 10, max = 30)
+    private String alternateUsername;
+
     private String userStatus;
 
     @Email(message =  "Email ID should be valid")

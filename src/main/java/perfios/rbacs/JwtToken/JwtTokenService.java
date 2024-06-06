@@ -3,6 +3,7 @@ package perfios.rbacs.JwtToken;
 import ch.qos.logback.core.joran.sanity.Pair;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.KeyPair;
 import io.jsonwebtoken.security.Keys;
@@ -46,7 +47,7 @@ public class JwtTokenService {
         //so needed something to diffrentiate between viewEach and viewSelf req on same endpoint.
         //--UPDATE--> now end points to viewEach and viewSelf are changed.
         String jwtToken = Jwts.builder()
-                .subject(subjectBuilder(loginResponse.getUserId(), loginResponse.getUserPermissionId()))
+                .subject(subjectBuilder(loginResponse.getUserId(), loginResponse.getUserRoleId(), loginResponse.getUserPermissionId()))
                 .issuedAt(Date.from(Instant.now()))
                 .expiration(Date.from(Instant.now().plusMillis(VALIDITY)))
                 .signWith(generateKey())
@@ -59,24 +60,25 @@ public class JwtTokenService {
         return Keys.hmacShaKeyFor(decodedKey);
     }
 
-    public String subjectBuilder(int userId, Set<String> userPermissions){
+    public String subjectBuilder(int userId, int userRoleId, Set<String> userPermissions){
         StringBuilder subject = new StringBuilder();
         subject.append("harsh")
                 .append(userId*1102)
                 .append("it");
         String userPermissionString = "";
-        Boolean viewAllPermission = false;
+//        Boolean viewAllPermission = false;
         for(String permission : userPermissions) {
-            if(permission.equals("7")) viewAllPermission = true;
             userPermissionString+=permission;
         }
                 subject.append(userPermissionString)
-                        .append("bajaj");
-        if(viewAllPermission) subject.append("1");
-        else subject.append("0");
+                        .append("bajaj")
+                        .append(userRoleId);
         return subject.toString();
 
     }
+
+
+
 
 
     private List<GrantedAuthority> extractAuthoritiesFromSubject(String subject){
@@ -92,11 +94,12 @@ public class JwtTokenService {
         return authorities;
     }
 
-    public boolean checkViewAllAuthorityFromToken(String jwtToken) {
+    public int getUserRoleId(String jwtToken) {
         String subject = extractSubjeectFromJwtToken(jwtToken);
-        RbacsApplication.printString(String.valueOf(subject.charAt(subject.length())));
-        if(subject.charAt(subject.length()) == '1') return  true;
-        else return false;
+        if(subject.isEmpty()) return -1;
+        char ch = subject.charAt(subject.length()-1);
+        int userId = ch - '0';
+        return userId;
     }
 
 
@@ -122,6 +125,15 @@ public class JwtTokenService {
         return reversedAuthority.toString();
 
     }
+
+
+    public List<GrantedAuthority> addRoleInAuthorities(List <GrantedAuthority> authorities, int roleId){
+        String roleName = userService.getRoleName(roleId);
+        authorities.add(new SimpleGrantedAuthority(roleName));
+        return authorities;
+    }
+
+
     public List <GrantedAuthority>  getAllUserAuthorities(String jwtToken){
         String subject = extractSubjeectFromJwtToken(jwtToken);
         List <GrantedAuthority> authorities = extractAuthoritiesFromSubject(subject);
@@ -154,9 +166,12 @@ public class JwtTokenService {
                     .parseSignedClaims(jwtToken)
                     .getPayload();
         }catch (ExpiredJwtException e ){
+            System.err.println(e.getMessage());
             return null;
         }catch (SignatureException f){
             return null;
+        }catch (JwtException e){
+            System.err.println(e.getMessage());
         }
 
         return claims;

@@ -25,9 +25,9 @@ public class PermissionServiceImplementation implements PermissionService{
 
     //SQL QUERIES
 
-    private static String getPermission= "select permission_id, permission_name from permission;";
-    private static String addPermission= "insert into permission(permission_id,permission_name) values(?,?);";
-    private static String deletePermission = "delete from permission where permission_id = ?;";
+    private static String getPermission= "select permission_id, permission_type from permission_type;";
+    private static String addPermission= "insert into permission_type(permission_id,permission_type) values(?,?);";
+    private static String deletePermission = "delete from permission_type where permission_id = ?;";
     @Override
     public List<Permission> getAllPermissions() {
         try {
@@ -40,7 +40,7 @@ public class PermissionServiceImplementation implements PermissionService{
                 while (resultSet.next()) {
                     Permission permission = new Permission();
                     permission.setPermissionId(resultSet.getInt("permission_id"));
-                    permission.setPermissionName(resultSet.getString("permission_name"));
+                    permission.setPermissionName(resultSet.getString("permission_type"));
                     permissionList.add(permission);
                 }
                 return permissionList;

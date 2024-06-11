@@ -10,4 +10,8 @@ public interface PermissionService {
     List<Permission> getAllPermissions();
     String addPermission(Permission permission);
     String deletePermission(int id);
+
+
+
+
 }

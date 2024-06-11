@@ -1,9 +1,13 @@
 package perfios.rbacs.Controller.RoleController;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import perfios.rbacs.Model.RoleToPermissionType.RoleToPermissionType;
 import perfios.rbacs.Model.Role_to_permission.RoleToPermission;
 import perfios.rbacs.Model.Roles.Role;
 import perfios.rbacs.RbacsApplication;
+import perfios.rbacs.Repository.Redis.Access;
+import perfios.rbacs.Repository.Redis.RedisDataService;
 import perfios.rbacs.Repository.RoleRepository.RoleService;
 
 import java.util.List;
@@ -14,6 +18,68 @@ public class RoleController {
 
     @Autowired
     private RoleService roleService;
+
+
+    @Autowired
+    private RedisDataService redisDataService;
+
+
+//    @PreAuthorize("hasRole('ROLE_ADMINISTRATOR')")
+    @GetMapping("/permission-type-access/{roleId}")
+    public List<RoleToPermissionType> getAllPermissionAccessForRole(@PathVariable String roleId){
+        return roleService.getAllPermissionTypeAccessForParticularRole(roleId);
+    }
+
+//    @PreAuthorize("hasRole('ROLE_ADMINISTRATOR')")
+    @PutMapping("permission/{permissionName}/role/{roleId}/view/{canView}")
+    public String updateViewAccessForPermissionType(@PathVariable String permissionName, @PathVariable int roleId, @PathVariable Boolean canView){
+        String pId = redisDataService.getPermissionId(permissionName);
+        int permissionId = Integer.valueOf(pId);
+        Boolean check = roleService.UpdateViewAccessForRoleAndPermission(roleId,permissionId,canView);
+        if(check){
+            Access access = redisDataService.getPermissionAccessFromRedis(String.valueOf(roleId),pId);
+            access.setCanView(canView);
+            redisDataService.savePermissionAccessToRedis(String.valueOf(roleId),pId,access);
+            return "Success";
+        }
+        return "Failed to Update";
+    }
+
+//    @PreAuthorize("hasRole('ROLE_ADMINISTRATOR')")
+    @PutMapping("permission/{permissionName}/role/{roleId}/edit/{canView}")
+    public String updateEditAccessForPermissionType(@PathVariable String permissionName, @PathVariable int roleId, @PathVariable Boolean canEdit){
+        String pId = redisDataService.getPermissionId(permissionName);
+        int permissionId = Integer.valueOf(pId);
+        Boolean check = roleService.UpdateEditAccessForRoleAndPermission(roleId,permissionId,canEdit);
+        if(check){
+            Access access = redisDataService.getPermissionAccessFromRedis(String.valueOf(roleId),pId);
+            access.setCanView(canEdit);
+            redisDataService.savePermissionAccessToRedis(String.valueOf(roleId),pId,access);
+            return "Success";
+        }
+        return "Failed to Update";
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//--------------------------------------below methords are for previous table layout----------------------------
 
 
     //THIS IS A CHECK FUNCTIN WHETHER CODE IS WORKING ON LOCALHOST:8080
@@ -63,8 +129,7 @@ public class RoleController {
     }
 
 
-    @GetMapping("rolepermission/{role_id}")
-    public List<String> getPermissionsForParticularRole(@PathVariable int role_id){
-        return roleService.getPermissionForParticularRole(role_id);
-    }
+
+
+
 }

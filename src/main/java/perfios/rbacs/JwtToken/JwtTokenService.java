@@ -108,9 +108,9 @@ public class JwtTokenService {
         String subject = extractSubjeectFromJwtToken(jwtToken);
         RbacsApplication.printString("subject = " + subject);
         if(subject == null) return -1;
-        int i=5;
+        int i=0;
         StringBuilder id = new StringBuilder();
-        while(subject.charAt(i) != 'i') id.append(subject.charAt(i++));
+        while(subject.charAt(i) != '$') id.append(subject.charAt(i++));
         RbacsApplication.printString(id.toString());
         int userId = Integer.valueOf(id.toString())/1102;
         return userId;

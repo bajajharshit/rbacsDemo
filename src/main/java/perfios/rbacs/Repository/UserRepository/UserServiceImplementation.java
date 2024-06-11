@@ -1,4 +1,5 @@
 package perfios.rbacs.Repository.UserRepository;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -59,13 +60,18 @@ public class UserServiceImplementation implements UserService{
     private int sessionRoleId =0;
     private Set<Integer> sessionPermissions = new HashSet<>();
     private LoginResponse loginResponse;
-
     int verifiedUserId = -1;
+
+
+    private HashMap<Integer,String > roleDetails = new HashMap<>();
+    private HashMap<String ,String > getRoleIdFromRole = new HashMap<>();
 
 
     @Override
     public int getVerifiedUserId(){
-        return this.verifiedUserId;
+        int id = this.verifiedUserId;
+        resetVerifiedUserId();
+        return id;
     }
 
     @Override
@@ -73,43 +79,14 @@ public class UserServiceImplementation implements UserService{
         this.verifiedUserId = -1;
     }
 
-    class ViewAndEdit{
-        boolean canView = false;
-        boolean canEdit = false;
-
-        ViewAndEdit(boolean cv, boolean ce){
-            if(cv == false){
-                this.canEdit = false;
-                this.canView = false;
-                return;
-            }
-            this.canView = cv;
-            this.canEdit = ce;
-        }
-
-        public boolean isCanView() {return this.canView;}
-        public boolean isCanEdit() {return this.canEdit;}
-    }
-
-
-    private HashMap<String,ViewAndEdit> forAdminPermissions = new HashMap<>();
-
-    private HashMap<Integer,String > roleDetails = new HashMap<>();
-
-    /*
-    SELECT rtpt.*,
-    (SELECT pt.permission_name FROM permission_type pt WHERE pt.permission_uuid = rtpt.permission_uuid)
-    AS permission_name FROM role_to_permission_type rtpt;
-
-     */
 
     @Override
     public void printRoleDetails(){
-        for(var entry : roleDetails.entrySet()){
-            RbacsApplication.printString(entry.toString());
-        }
+        RbacsApplication.printString("ROLE DETAILS = ");
+        RbacsApplication.printString(roleDetails.toString());
+        RbacsApplication.printString("ROle IDs");
+        RbacsApplication.printString(getRoleIdFromRole.toString());
     }
-
 
 
 
@@ -123,66 +100,28 @@ public class UserServiceImplementation implements UserService{
 
 
     @Override
-    public String fillRoleDetails(){
+    public void fillRoleDetails(){
+        HashMap<String,String> getRoleIdFromGrantedAuthority = new HashMap<>();
         try{
             Connection connection = dataSource.getConnection();
             PreparedStatement statement = connection.prepareStatement(fetchRoleIdAndRoleNameQuery);
             ResultSet roles = statement.executeQuery();
             while(roles.next()){
                 roleDetails.put(roles.getInt("role_id"),roles.getString("role_name"));
+                getRoleIdFromGrantedAuthority.put(getRoleName(roles.getInt("role_id")),String.valueOf(roles.getInt("role_id")));
             }
         }catch (SQLException e){
             System.err.println(e.getMessage());
         }
-        return roleDetails.toString();
+        this.getRoleIdFromRole = getRoleIdFromGrantedAuthority;
     }
 
 
     @Override
-    public void fillAdminPermissions(){
-        try{
-            Connection connection = dataSource.getConnection();
-            PreparedStatement statement = connection.prepareStatement(fetchAdminPermissionsQuery);
-            ResultSet adminPermission = statement.executeQuery();
-            while(adminPermission.next()){
-                String uuid = adminPermission.getString("permission_id");
-                boolean canEdit = adminPermission.getBoolean("can_edit");
-                boolean canView = adminPermission.getBoolean("can_view");
-                ViewAndEdit viewAndEdit = new ViewAndEdit(canView,canEdit);
-                forAdminPermissions.put(uuid,viewAndEdit);
-            }
-        }catch (SQLException e){
-            System.err.println(e.getMessage());
-        }
+    public String getRoleIdFromRole(String roleName) {
+        String roleId = getRoleIdFromRole.get(roleName);
+        return roleId;
     }
-
-    @Override
-    public boolean getPermission(String uuid, String type){
-        if(forAdminPermissions.containsKey(uuid) == false) return false;
-        ViewAndEdit viewAndEdit = forAdminPermissions.get(uuid);
-        if(type == "view") return viewAndEdit.canView;
-        else return viewAndEdit.canEdit;
-    }
-
-
-
-    @Override
-    public void printAdminPermissionMap(){
-        if(this.forAdminPermissions == null) RbacsApplication.printString("admin permission found null");
-        RbacsApplication.printString("permission_id|can view | can edit |");
-        for(var entry : forAdminPermissions.entrySet()){
-            String key = entry.getKey();
-            ViewAndEdit viewAndEdit = entry.getValue();
-            RbacsApplication.printString(key+ "            | " + "  " + viewAndEdit.canView + " |  " + viewAndEdit.canEdit);
-        }
-    }
-
-
-
-
-
-
-
 
 
     //this below methord is for jwt, use to validate user agaist database using its id.
@@ -393,21 +332,6 @@ public LoginResponse getUserLogin(){
     }
 
 
-    //this function is to add a row in user_to_role table.
-    public int addNewRoleToUser(int user_id, int role_id) {
-        try {
-            Connection connection = dataSource.getConnection();
-            PreparedStatement statement2 = connection.prepareStatement(addUserRoleQuery);
-            statement2.setInt(1, user_id);
-            statement2.setInt(2, role_id);
-            return statement2.executeUpdate();  //this returns int, if 1 => means user with that role saved, else check inputs.
-        }catch (SQLException e){
-            System.err.println(e.getMessage());
-        }
-        return 0;
-    }
-
-
 
     //function to add new user from now onwards
     @Override
@@ -463,40 +387,7 @@ public LoginResponse getUserLogin(){
     }
 
 
-    public int checkNumberOfRolesAssociatedWithUser(int user_id){
-        try{
-            Connection connection = dataSource.getConnection();
-            PreparedStatement statement = connection.prepareStatement(checkNumberOfRolesAssociatedWithUserQuery);
-            statement.setInt(1,user_id);
-            ResultSet countOfRoles = statement.executeQuery();
-            countOfRoles.next();
-            int rowsAffected = countOfRoles.getInt("count(*)");
-            return rowsAffected;
-        }catch (SQLException e){
-            System.err.println(e.getMessage());
-        }
-        return 0;
-    }
 
-
-    @Override
-    public String unassignUserRole(int user_id, int role_id){
-        int checkNumberOfRolesUserHad = checkNumberOfRolesAssociatedWithUser(user_id);
-        if(checkNumberOfRolesUserHad == 0) return "user did not exist";
-        if(checkNumberOfRolesUserHad == 1) return "user must have atleast one role, cannot unassign given role to user";
-        try{
-            Connection connection = dataSource.getConnection();
-            PreparedStatement preparedStatement = connection.prepareStatement(deleteUserRoleQuery);
-            preparedStatement.setInt(1,user_id);
-            preparedStatement.setInt(2,role_id);
-            int rowsAffected = preparedStatement.executeUpdate();
-            if(rowsAffected>0) return "user is unassigned with given role";
-            else return "give correct user nd role";
-        }catch (SQLException e){
-            System.err.println(e.getMessage());
-        }
-        return "provide correct credentials";
-    }
 
 
     public String updateUser(User user, int id){
@@ -589,22 +480,6 @@ public LoginResponse getUserLogin(){
             System.err.println(e.getMessage());
         }
         return null;
-    }
-
-    @Override
-    public String addNewRoleToExistingUser(int user_id, int role_id) {
-        try{
-            Connection connection = dataSource.getConnection();
-            PreparedStatement statement = connection.prepareStatement(addNewRoleToExistingUserQuery);
-            statement.setInt(1,user_id);
-            statement.setInt(2,role_id);
-            int rowsAffected = statement.executeUpdate();
-            if(rowsAffected>0) return "User has been assinged to new role";
-            else return "user is already assinged to the given role";
-        }catch (SQLException e){
-            System.err.println(e.getMessage());
-        }
-        return "operation failed";
     }
 
 

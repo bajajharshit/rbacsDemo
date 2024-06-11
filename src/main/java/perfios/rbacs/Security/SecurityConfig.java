@@ -4,6 +4,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -19,6 +20,10 @@ import perfios.rbacs.Repository.UserRepository.UserService;
 
 @Configuration
 @EnableWebSecurity
+@EnableGlobalMethodSecurity(
+        prePostEnabled = true,
+        securedEnabled = true,
+        jsr250Enabled = true)
 public class SecurityConfig {
 
     @Autowired
@@ -56,36 +61,28 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
-        //fill adminPermission map on starting of application
-        userService.fillAdminPermissions();
-        userService.printAdminPermissionMap();
-        userService.fillRoleDetails();
-        userService.printRoleDetails();
-        RbacsApplication.printString("inside security filter chain");
-
-
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(authorize ->
-                        authorize
-                                .requestMatchers(HttpMethod.POST, "/login").permitAll()
-                                .requestMatchers(HttpMethod.POST,"loginpostman").permitAll()
-                                .requestMatchers(HttpMethod.GET, "/login").permitAll()
-                                .requestMatchers(HttpMethod.GET, "/homepage").permitAll()
-                                .requestMatchers(HttpMethod.GET, "/userhome").permitAll()
-                                .requestMatchers(HttpMethod.GET,"/loginjwt").permitAll()
-                                .requestMatchers(HttpMethod.POST,"/loginjwt").permitAll()
-                                .requestMatchers(HttpMethod.GET,"/logoutjwt").permitAll()
-                                .requestMatchers(HttpMethod.GET,"/checking").permitAll()
-                                .requestMatchers(HttpMethod.POST, "/user").hasAuthority("1") //createUser
-                                .requestMatchers(HttpMethod.GET, "/user/dashboard").hasAuthority("6") //canViewUser's Dashboard
-                                .requestMatchers(HttpMethod.POST, "/user/{id}").hasAuthority("3") //UpdateUserWith{id}
-                                .requestMatchers(HttpMethod.GET, "/user/{id}").hasAnyAuthority( "5","7")  //5-> viewSelf & 7->ViewAll
-                                .requestMatchers(HttpMethod.GET, "/user").hasRole("ADMINISTRATOR")  //canViewListOfAllUsers
-                                .anyRequest().authenticated()
-                ).logout(logout ->
+//                .authorizeHttpRequests(authorize ->
+//                        authorize
+//                                .requestMatchers(HttpMethod.POST, "/login").permitAll()
+//                                .requestMatchers(HttpMethod.POST,"loginpostman").permitAll()
+//                                .requestMatchers(HttpMethod.GET, "/login").permitAll()
+//                                .requestMatchers(HttpMethod.GET, "/homepage").permitAll()
+//                                .requestMatchers(HttpMethod.GET, "/userhome").permitAll()
+//                                .requestMatchers(HttpMethod.GET,"/loginjwt").permitAll()
+//                                .requestMatchers(HttpMethod.POST,"/loginjwt").permitAll()
+//                                .requestMatchers(HttpMethod.GET,"/logoutjwt").permitAll()
+//                                .requestMatchers(HttpMethod.GET,"/checking").permitAll()
+//                                .requestMatchers(HttpMethod.POST, "/user").hasAuthority("1") //createUser
+//                                .requestMatchers(HttpMethod.POST, "/user/{id}").hasAuthority("3") //UpdateUserWith{id}
+//                                .requestMatchers(HttpMethod.GET, "/user/{id}").hasAnyAuthority( "5","7")  //5-> viewSelf & 7->ViewAll
+//                                .requestMatchers(HttpMethod.GET, "/user").hasRole("ADMINISTRATOR")  //canViewListOfAllUsers
+//                                .anyRequest().authenticated()
+//                )
+                .logout(logout ->
                         logout
-                                .permitAll()
+//                                .permitAll()
                                 .addLogoutHandler(clearSiteData)
                                 .logoutUrl("/logout")
                                 .clearAuthentication(true)

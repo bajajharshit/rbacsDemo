@@ -28,6 +28,7 @@ import perfios.rbacs.Security.SecurityConfig;
 
 @CrossOrigin
 @RestController
+
 public class LoginJwtController {
 
 
@@ -48,6 +49,7 @@ public class LoginJwtController {
 
     //expired jwt token for testing:
     //eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJoYXJzaDUzOTk4aXQ1YmFqYWowIiwiaWF0IjoxNzE3NDAzNjg5LCJleHAiOjE3MTc0MDU0ODl9.e2Bpcix6YEVvTkzOzs5CTi3s0qSO7OyWY38UBO7UsvoTiSxFMNm3gXIt3L9d1HSSQDmGEOqoFDs-ax43g5i5SQ
+
 
 
     @GetMapping("/loginjwt")

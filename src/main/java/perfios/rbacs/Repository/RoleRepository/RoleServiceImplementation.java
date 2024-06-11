@@ -1,16 +1,21 @@
 package perfios.rbacs.Repository.RoleRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.PreparedStatementSetter;
 import org.springframework.stereotype.Service;
+import perfios.rbacs.Model.RoleToPermissionType.RoleToPermissionType;
 import perfios.rbacs.Model.Role_to_permission.RoleToPermission;
 import perfios.rbacs.Model.Roles.Role;
 import perfios.rbacs.RbacsApplication;
+import perfios.rbacs.Repository.UserRepository.UserService;
 
 import java.sql.*;
 import java.util.*;
 //import perfios.rbacs.Config.JDBCConfig;
 
+import javax.naming.CannotProceedException;
 import javax.sql.DataSource;
+import javax.sql.RowSetEvent;
 
 @Service
 public class RoleServiceImplementation implements RoleService{
@@ -32,7 +37,130 @@ public class RoleServiceImplementation implements RoleService{
     private static String saveRolePermissionQuery = "insert into role_to_permission(role_id,permission_id) values(?,?);";
     private static String deleteRolePermissionQuery= "delete from role_to_permission where role_id = ? and permission_id = ?;";
     private static String getPermissionIdPermissionNameQuery = "select permission_id,permission_name from permission;";
-    private static String getPermissionForParticularRoleQuery = "SELECT permission.permission_id, permission.permission_name FROM permission WHERE permission.permission_id IN (SELECT permission_id FROM role_to_permission WHERE role_id = ?);";
+
+
+
+
+    private static String getAllPermissionAccessList = "select role_id, permission_id, can_view, can_edit from role_to_permission_type;";
+    private static String updateViewAccessForRoleAndPermissionQuery = "update role_to_permission_type set can_view = ? where role_id = ? and permission_id = ?";
+    private static String updateEditAccessForRoleAndPermissionQuery = "update role_to_permission_type set can_edit = ? where role_id = ? and permission_id = ?";
+    private static final String getAllPermissionTypeAccessForParticularRoleQuery = "SELECT pt.permission_type, pt.permission_id, rtpt.can_view, rtpt.can_edit FROM permission_type pt INNER JOIN role_to_permission_type rtpt ON pt.permission_id = rtpt.permission_id WHERE role_id = ?;";
+
+
+
+
+
+//-------------------------------------------new methords according to new design------------------------------
+
+    @Override
+    public List<RoleToPermissionType> getAllPermissionsAccess() {
+        try{
+            Connection connection = dataSource.getConnection();
+            PreparedStatement statement = connection.prepareStatement(getAllPermissionAccessList);
+            ResultSet permissionList = statement.executeQuery();
+            if(!permissionList.next()) return null;
+            List<RoleToPermissionType> permissionTypeList  = new ArrayList<>();
+            do{
+                RoleToPermissionType permissionAccess = new RoleToPermissionType();
+                permissionAccess.setPermissionId(String.valueOf(permissionList.getInt("permission_id")));
+                permissionAccess.setRoleId(String.valueOf(permissionList.getInt("role_id")));
+                permissionAccess.setCanEdit(permissionList.getBoolean("can_edit"));
+                permissionAccess.setCanView(permissionList.getBoolean("can_view"));
+                permissionTypeList.add(permissionAccess);
+            }while (permissionList.next());
+            return permissionTypeList;
+        }catch (SQLException e){
+            System.err.println(e.getMessage());
+        }
+        return null;
+    }
+
+
+
+
+
+    //methord to update view permission in mysql(permanent) and redis(in memory) together for a particualr role
+    @Override
+    public Boolean UpdateViewAccessForRoleAndPermission(int role_id, int permission_id, Boolean allow){
+        try{
+            Connection connection = dataSource.getConnection();
+            PreparedStatement statement = connection.prepareStatement(updateViewAccessForRoleAndPermissionQuery);
+            statement.setBoolean(1,allow);
+            statement.setInt(2,role_id);
+            statement.setInt(3,permission_id);
+            int rowsAffected = statement.executeUpdate();
+            if(rowsAffected == 0) return false;
+            else return true;
+        }catch (SQLException e){
+            System.err.println(e.getMessage());
+        }
+        return null;
+    }
+
+
+    @Override
+    public Boolean UpdateEditAccessForRoleAndPermission(int role_id, int permission_id, Boolean allow){
+        try{
+            Connection connection = dataSource.getConnection();
+            PreparedStatement statement = connection.prepareStatement(updateEditAccessForRoleAndPermissionQuery);
+            statement.setBoolean(1,allow);
+            statement.setInt(2,role_id);
+            statement.setInt(3,permission_id);
+            int rowsAffected = statement.executeUpdate();
+            if(rowsAffected == 0) return false;
+            else return true;
+        }catch (SQLException e){
+            System.err.println(e.getMessage());
+        }
+        return null;
+    }
+
+    @Override
+    public List<RoleToPermissionType> getAllPermissionTypeAccessForParticularRole(String roleId){
+        try{
+            Connection connection = dataSource.getConnection();
+            PreparedStatement statement = connection.prepareStatement(getAllPermissionTypeAccessForParticularRoleQuery);
+            statement.setInt(1,Integer.valueOf(roleId));
+            ResultSet permissionAccess = statement.executeQuery();
+            if(!permissionAccess.next()) return null;
+            List<RoleToPermissionType> permissionTypeAccessList = new ArrayList<>();
+            do{
+                RoleToPermissionType roleToPermissionType = new RoleToPermissionType();
+                roleToPermissionType.setPermissionName(permissionAccess.getString("permission_type"));
+                roleToPermissionType.setPermissionId(String.valueOf(permissionAccess.getInt("permission_id")));
+                roleToPermissionType.setCanView(permissionAccess.getBoolean("can_view"));
+                roleToPermissionType.setCanEdit(permissionAccess.getBoolean("can_edit"));
+                roleToPermissionType.setRoleId(roleId);
+                permissionTypeAccessList.add(roleToPermissionType);
+            }while (permissionAccess.next());
+            return permissionTypeAccessList;
+        }catch (SQLException e){
+            System.err.println(e.getMessage());
+        }
+        return null;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    //---------------------------------------old methords BELOW-------------------------------------
+
+
+
+
     @Override
     public List<Role> getAllRoles() {
         try (Connection connection = dataSource.getConnection();
@@ -52,26 +180,6 @@ public class RoleServiceImplementation implements RoleService{
         }
         return Collections.emptyList();
     }
-
-    @Override
-    public List<String> getPermissionForParticularRole(int role_id){
-        try{
-            Connection connection = dataSource.getConnection();
-            PreparedStatement statement = connection.prepareStatement(getPermissionForParticularRoleQuery);
-            statement.setInt(1,role_id);
-            ResultSet permissionListResultSet = statement.executeQuery();
-            List<String> permissionList = new ArrayList<>();
-            while(permissionListResultSet.next()){
-                permissionList.add(permissionListResultSet.getString("permission_name"));
-            }
-            return permissionList;
-        }
-        catch (SQLException e){
-            System.err.println(e.getMessage());
-        }
-        return null;
-    }
-
 
 
 
@@ -203,6 +311,11 @@ public class RoleServiceImplementation implements RoleService{
         }
         return null;
     }
+
+
+
+
+
 
 
 }

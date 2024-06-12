@@ -32,4 +32,9 @@ public class RedisDataService {
     public String getPermissionId(String permissionType){
         return redisTemplateForPermissionType.opsForValue().get(permissionType);
     }
+
+    public void deletePermissionForRole(String roleId , String permissionId)
+    {
+        redisTemplateForPermissionType.delete(roleId+"_"+permissionId);
+    }
 }

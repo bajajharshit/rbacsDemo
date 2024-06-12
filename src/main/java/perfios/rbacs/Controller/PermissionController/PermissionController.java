@@ -14,6 +14,7 @@ public class PermissionController {
     @Autowired
     private PermissionService permissionService;
 
+
     //this is a checking methord.
     @RequestMapping("homepermission")
     public String homep(){

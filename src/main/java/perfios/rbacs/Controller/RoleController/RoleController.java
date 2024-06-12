@@ -2,6 +2,7 @@ package perfios.rbacs.Controller.RoleController;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import perfios.rbacs.Model.Permission.Permission;
 import perfios.rbacs.Model.RoleToPermissionType.RoleToPermissionType;
 import perfios.rbacs.Model.Role_to_permission.RoleToPermission;
 import perfios.rbacs.Model.Roles.Role;
@@ -10,6 +11,7 @@ import perfios.rbacs.Repository.Redis.Access;
 import perfios.rbacs.Repository.Redis.RedisDataService;
 import perfios.rbacs.Repository.RoleRepository.RoleService;
 
+import java.sql.SQLException;
 import java.util.List;
 
 @CrossOrigin
@@ -22,6 +24,43 @@ public class RoleController {
 
     @Autowired
     private RedisDataService redisDataService;
+
+
+    @PostMapping("/newpermission")
+    public String addNewPermissionTypeToExistingRole(@RequestBody RoleToPermissionType newPermission) throws SQLException {
+
+        RbacsApplication.printString(newPermission.toString());
+        Boolean check = roleService.addNewPermissionToExistingRole(newPermission);
+        if(check) {
+            String permissionId = redisDataService.getPermissionId(newPermission.getPermissionName());
+            Access access = new Access();
+            access.setCanView(newPermission.getCanView());
+            access.setCanEdit(newPermission.getCanEdit());
+            redisDataService.savePermissionAccessToRedis(newPermission.getRoleId(),permissionId,access);
+            return "successfully added";
+        }
+        else return "400badrequest";
+
+
+    }
+
+    @DeleteMapping("/deletepermission/{permission_name}/forrole/{role_id}")
+    public String deletePermissionForRole(@PathVariable String permission_name, @PathVariable int role_id){
+        Boolean check = roleService.unassignPermissionToExistingRole(role_id,permission_name);
+        if(check) {
+            redisDataService.deletePermissionForRole(String.valueOf(role_id), redisDataService.getPermissionId(permission_name));
+            return "success";
+
+        }
+        return "bad request";
+    }
+
+
+
+
+
+
+
 
 
 //    @PreAuthorize("hasRole('ROLE_ADMINISTRATOR')")

@@ -1,12 +1,16 @@
 package perfios.rbacs.Repository.RoleRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.SQLWarningException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.PreparedStatementSetter;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import perfios.rbacs.Model.RoleToPermissionType.RoleToPermissionType;
 import perfios.rbacs.Model.Role_to_permission.RoleToPermission;
 import perfios.rbacs.Model.Roles.Role;
 import perfios.rbacs.RbacsApplication;
+import perfios.rbacs.Repository.Redis.RedisDataService;
 import perfios.rbacs.Repository.UserRepository.UserService;
 
 import java.sql.*;
@@ -27,6 +31,12 @@ public class RoleServiceImplementation implements RoleService{
         this.dataSource=dataSource;
     }
 
+    @Autowired
+    RedisDataService redisDataService;
+
+    @Autowired
+    NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+
 
 
     //declare queries here
@@ -45,8 +55,8 @@ public class RoleServiceImplementation implements RoleService{
     private static String updateViewAccessForRoleAndPermissionQuery = "update role_to_permission_type set can_view = ? where role_id = ? and permission_id = ?";
     private static String updateEditAccessForRoleAndPermissionQuery = "update role_to_permission_type set can_edit = ? where role_id = ? and permission_id = ?";
     private static final String getAllPermissionTypeAccessForParticularRoleQuery = "SELECT pt.permission_type, pt.permission_id, rtpt.can_view, rtpt.can_edit FROM permission_type pt INNER JOIN role_to_permission_type rtpt ON pt.permission_id = rtpt.permission_id WHERE role_id = ?;";
-
-
+    private static final String addNewPermissionToExistingRoleQuery = "insert into role_to_permission_type(role_id,permission_id,can_view,can_edit) values(:role_id,:permission_id,:can_view,:can_edit);";
+    private static final String deletePermissionForExistingRoleQuery = "delete from role_to_permission_type where role_id = :role_id and permission_id = :permission_id";
 
 
 
@@ -139,6 +149,49 @@ public class RoleServiceImplementation implements RoleService{
         }
         return null;
     }
+
+    @Override
+    public Boolean addNewPermissionToExistingRole(RoleToPermissionType newPermission) {
+            String permissionId = redisDataService.getPermissionId(newPermission.getPermissionName());
+            String roleId = newPermission.getRoleId();
+            Boolean canView = newPermission.getCanView();
+            Boolean canEdit = newPermission.getCanEdit();
+            Map<String,Object> params = new HashMap<>();
+            params.put("role_id",roleId);
+            params.put("permission_id",permissionId);
+            params.put("can_view",canView);
+            params.put("can_edit",canEdit);
+         RbacsApplication.printString(params.toString());
+            int rowsAffected = 0;
+            try {
+                rowsAffected = namedParameterJdbcTemplate.update(addNewPermissionToExistingRoleQuery, params);
+                throw new SQLException();
+            }catch (Exception e){
+                System.err.println(e.getMessage());
+            }
+        if(rowsAffected > 0) return true;
+            else return false;
+    }
+
+    @Override
+    public Boolean unassignPermissionToExistingRole(int roleId, String permissionType) {
+        String permissionId = redisDataService.getPermissionId(permissionType);
+        RbacsApplication.printString("roleid = " + roleId + " permisison type = " + permissionType + "permisison id = " + permissionId);
+
+        Map<String ,Object> params = new HashMap<>();
+        params.put("role_id",roleId);
+        params.put("permission_id",Integer.valueOf(permissionId));
+        RbacsApplication.printString(params.toString());
+        int rowsAffected = 0;
+        try {
+             rowsAffected = namedParameterJdbcTemplate.update(deletePermissionForExistingRoleQuery, params);
+        }catch (Exception e){
+            System.err.println(e.getMessage());
+        }
+        if(rowsAffected > 0) return true;
+        else return false;
+    }
+
 
 
 

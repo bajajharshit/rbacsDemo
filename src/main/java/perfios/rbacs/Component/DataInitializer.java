@@ -13,8 +13,6 @@ import perfios.rbacs.Repository.Redis.RedisDataService;
 import perfios.rbacs.Repository.RoleRepository.RoleService;
 import perfios.rbacs.Repository.UserRepository.UserService;
 
-import java.sql.ResultSet;
-import java.util.HashMap;
 import java.util.List;
 
 @Component
@@ -48,7 +46,7 @@ public class DataInitializer {
 
         List<Permission> permissionType = permissionService.getAllPermissions();
         for(Permission permission : permissionType){
-            redisDataService.savePermissionTypeToRedis(permission.getPermissionName(), String.valueOf(permission.getPermissionId()));
+            redisDataService.savePermissionTypeToRedis(permission.getPermissionType(), String.valueOf(permission.getPermissionId()));
         }
 
         RbacsApplication.printString("permission type = -------");

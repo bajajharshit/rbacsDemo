@@ -1,17 +1,13 @@
 package perfios.rbacs.Repository.PermissionRepository;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import perfios.rbacs.Model.Permission.Permission;
 
-import javax.sound.midi.Soundbank;
 import javax.sql.DataSource;
-import javax.xml.crypto.Data;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -23,11 +19,17 @@ public class PermissionServiceImplementation implements PermissionService{
         this.dataSource = dataSource;
     }
 
+    @Autowired
+    private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+
+
     //SQL QUERIES
 
     private static String getPermission= "select permission_id, permission_type from permission_type;";
     private static String addPermission= "insert into permission_type(permission_id,permission_type) values(?,?);";
     private static String deletePermission = "delete from permission_type where permission_id = ?;";
+
+
     @Override
     public List<Permission> getAllPermissions() {
         try {
@@ -40,7 +42,7 @@ public class PermissionServiceImplementation implements PermissionService{
                 while (resultSet.next()) {
                     Permission permission = new Permission();
                     permission.setPermissionId(resultSet.getInt("permission_id"));
-                    permission.setPermissionName(resultSet.getString("permission_type"));
+                    permission.setPermissionType(resultSet.getString("permission_type"));
                     permissionList.add(permission);
                 }
                 return permissionList;
@@ -62,9 +64,9 @@ public class PermissionServiceImplementation implements PermissionService{
             try {
                 PreparedStatement statement = connection.prepareStatement(addPermission);
                 statement.setInt(1,permission.getPermissionId());
-                statement.setString(2,permission.getPermissionName());
+                statement.setString(2,permission.getPermissionType());
                 int rowsAffected = statement.executeUpdate();
-                if(rowsAffected>0) return permission.getPermissionId() + " "+ permission.getPermissionName() + " saved successfully";
+                if(rowsAffected>0) return permission.getPermissionId() + " "+ permission.getPermissionType() + " saved successfully";
                 else return "Permission didnot saved";
             }
             catch (SQLException e){

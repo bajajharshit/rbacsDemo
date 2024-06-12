@@ -84,7 +84,7 @@ public class UserController {
 
 
     //this is for user dashboard (user_id, user email, user role)
-    @PreAuthorize("hasAnyRole('ROLE_ADMINISTRATOR')")
+    @PreAuthorize("hasAnyRole('ROLE_ADMINISTRATOR','ROLE_BANK-OFFICER')")
     @GetMapping("user/dashboard")
     public ResponseEntity<?> getAllUsersDashboard() {
         String permission_type = "dashboard";  //by default
@@ -92,6 +92,7 @@ public class UserController {
         String roleId = roleIdFromRoleName();
         if(roleId == null) return ResponseEntity.badRequest().body("Page Not Available");
         Access access = redisDataService.getPermissionAccessFromRedis(roleId,permissionId);
+        if(access == null) return ResponseEntity.badRequest().body("Page Not Available");
         Boolean allow = false;
         if(access.isCanView()) allow = true;
         if(allow == false) return ResponseEntity.badRequest().body("You don't have access to this page :(");

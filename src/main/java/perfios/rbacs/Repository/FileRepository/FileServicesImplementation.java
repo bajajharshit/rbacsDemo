@@ -3,6 +3,7 @@ package perfios.rbacs.Repository.FileRepository;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.poi.ss.formula.atp.Switch;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -84,9 +85,6 @@ public class FileServicesImplementation implements FileServices{
                 }
                 RbacsApplication.printString(user.toString());
                 verificationList.add(user.getUserEmail() + " -> " + userService.addNewUser(user));
-//                RbacsApplication.printString("------------------------------------------");
-//                RbacsApplication.printString(verificationList.toString());
-//                RbacsApplication.printString(String.valueOf(record.hasNext()));
             }
             return verificationList;
         }catch (IOException e){
@@ -97,9 +95,72 @@ public class FileServicesImplementation implements FileServices{
 
 
     @Override
-    public List<String> addUserFromXlxsFile(MultipartFile file) {
+    public List<String> addUserFromXlxsFile(MultipartFile multipartFile) {
+        InputStream inputStream;
+        Workbook workbook = null;
+        try {
+            inputStream = multipartFile.getInputStream();
+            workbook = new XSSFWorkbook(inputStream);
+        }catch (IOException e){
+            System.err.println(e.getMessage());
+        }
+        if(workbook == null)return null;
+        Sheet sheet = workbook.getSheetAt(0);
+        Iterator<Row> rowIterator = sheet.iterator();
+        rowIterator.next(); //assuming first row is header
+//let format for excel sheet is :-
+//User Id | User First Name | User Last Name | User Password | User Phone Number | Alternate Username |
+//User Status | User Email | User Role Name | User Role Id | Enabled | Is Super Admin | Should Loan Auto Apply |
+//create a map for user and then make a user object and sent it to servic layer.
 
-        Workbook workbook = new XSSFWorkbook(file);
+        /*
+        headers.add("userFirstName");
+        headers.add("userLastName");
+        headers.add("userPassword");
+        headers.add("userPhoneNumber");
+        headers.add("userStatus");
+        headers.add("userEmail");
+        headers.add("userRoleId");
+        headers.add("enabled");
+        headers.add("isSuperAdmin");
+        headers.add("shouldLoanAutoApply");
+         */
+        RbacsApplication.printString("TOTAL ROWS = " + sheet.getLastRowNum());
+        List<String> verificationList = new ArrayList<>();
+        Row headerRow = sheet.getRow(0);
+        while (rowIterator.hasNext()){
+            Row row = rowIterator.next();
+            if(row == null) continue;
+            RbacsApplication.printString("--------------------------------------------");
+            Map<String,String> userMap = new HashMap<>();
+            Iterator<Cell> headerName = headerRow.cellIterator();
+            Boolean check = true;
+            for(Cell cell : row){
+                String key = headerName.next().getStringCellValue();
+                CellType cellType = cell.getCellType();
+                switch(cellType){
+                    case NUMERIC -> {
+                        RbacsApplication.printString("value for " + key + " = " + cell.getNumericCellValue());
+                        userMap.put(key,String.valueOf(((int)cell.getNumericCellValue())));
+                    }case STRING -> {
+                        if(cell.getStringCellValue() == null || cell.getStringCellValue().isEmpty()){
+                            check = false;
+                            break;
+                        }
+                        userMap.put(key,cell.getStringCellValue());
+                    }
+                }
+            }
+            if(check) {
+                User user = new User();
+                RbacsApplication.printString("current map = " + userMap);
+                user.setFeildsFromMapForCsvFile(userMap);
+                RbacsApplication.printString(user.toString());
+                verificationList.add(user.getUserEmail() + " -> " + userService.addNewUser(user));
+                RbacsApplication.printString(verificationList.toString());
+            }
+        }
+        return verificationList;
     }
 
     @Override

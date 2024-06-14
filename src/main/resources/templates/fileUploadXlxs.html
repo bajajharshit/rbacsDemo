@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>File Upload</title>
+</head>
+<body>
+<h1>Upload a file</h1>
+<form method="POST" enctype="multipart/form-data" action="/file/upload-xlxs">
+    <input type="file" name="file">
+    <button type="submit">Upload</button>
+</form>
+<p th:text="${message}"></p>
+</body>
+</html>

@@ -40,4 +40,9 @@ public class FileController {
         if(file == null || file.isEmpty()) return new ArrayList<>();
         return fileServices.addUserFromXlxsFile(file);
     }
+
+    @GetMapping("/file/upload/xlxs")
+    public ModelAndView uploadXlxsFile(){
+        return new ModelAndView ("fileUploadXlxs");
+    }
 }

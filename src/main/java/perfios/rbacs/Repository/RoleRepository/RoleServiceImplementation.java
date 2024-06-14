@@ -1,6 +1,7 @@
 package perfios.rbacs.Repository.RoleRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.SQLWarningException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.PreparedStatementSetter;
@@ -52,8 +53,8 @@ public class RoleServiceImplementation implements RoleService{
 
 
     private static String getAllPermissionAccessList = "select role_id, permission_id, can_view, can_edit from role_to_permission_type;";
-    private static String updateViewAccessForRoleAndPermissionQuery = "update role_to_permission_type set can_view = ? where role_id = ? and permission_id = ?";
-    private static String updateEditAccessForRoleAndPermissionQuery = "update role_to_permission_type set can_edit = ? where role_id = ? and permission_id = ?";
+    private static String updateViewAccessForRoleAndPermissionQuery = "update role_to_permission_type set can_view = :can_view where role_id = :role_id and permission_id = :permission_id";
+    private static String updateEditAccessForRoleAndPermissionQuery = "update role_to_permission_type set can_edit = :can_edit where role_id = :role_id and permission_id = :permission_id";
     private static final String getAllPermissionTypeAccessForParticularRoleQuery = "SELECT pt.permission_type, pt.permission_id, rtpt.can_view, rtpt.can_edit FROM permission_type pt INNER JOIN role_to_permission_type rtpt ON pt.permission_id = rtpt.permission_id WHERE role_id = ?;";
     private static final String addNewPermissionToExistingRoleQuery = "insert into role_to_permission_type(role_id,permission_id,can_view,can_edit) values(:role_id,:permission_id,:can_view,:can_edit);";
     private static final String deletePermissionForExistingRoleQuery = "delete from role_to_permission_type where role_id = :role_id and permission_id = :permission_id";
@@ -92,37 +93,37 @@ public class RoleServiceImplementation implements RoleService{
     //methord to update view permission in mysql(permanent) and redis(in memory) together for a particualr role
     @Override
     public Boolean UpdateViewAccessForRoleAndPermission(int role_id, int permission_id, Boolean allow){
+//
+        HashMap<String ,Object> params  = new HashMap<>();
+        params.put("can_view",allow);
+        params.put("role_id",role_id);
+        params.put("permission_id",permission_id);
+        int rowsAffected = 0;
         try{
-            Connection connection = dataSource.getConnection();
-            PreparedStatement statement = connection.prepareStatement(updateViewAccessForRoleAndPermissionQuery);
-            statement.setBoolean(1,allow);
-            statement.setInt(2,role_id);
-            statement.setInt(3,permission_id);
-            int rowsAffected = statement.executeUpdate();
-            if(rowsAffected == 0) return false;
-            else return true;
-        }catch (SQLException e){
+            rowsAffected = namedParameterJdbcTemplate.update(updateViewAccessForRoleAndPermissionQuery,params);
+            if(rowsAffected > 0) return true ;
+        }catch (DataAccessException e){
             System.err.println(e.getMessage());
         }
-        return null;
+        return false;
+
     }
 
 
     @Override
     public Boolean UpdateEditAccessForRoleAndPermission(int role_id, int permission_id, Boolean allow){
+        HashMap<String ,Object> params  = new HashMap<>();
+        params.put("can_edit",allow);
+        params.put("role_id",role_id);
+        params.put("permission_id",permission_id);
+        int rowsAffected = 0;
         try{
-            Connection connection = dataSource.getConnection();
-            PreparedStatement statement = connection.prepareStatement(updateEditAccessForRoleAndPermissionQuery);
-            statement.setBoolean(1,allow);
-            statement.setInt(2,role_id);
-            statement.setInt(3,permission_id);
-            int rowsAffected = statement.executeUpdate();
-            if(rowsAffected == 0) return false;
-            else return true;
-        }catch (SQLException e){
+            rowsAffected = namedParameterJdbcTemplate.update(updateEditAccessForRoleAndPermissionQuery,params);
+            if(rowsAffected > 0) return true ;
+        }catch (DataAccessException e){
             System.err.println(e.getMessage());
         }
-        return null;
+        return false;
     }
 
     @Override
@@ -185,7 +186,7 @@ public class RoleServiceImplementation implements RoleService{
         int rowsAffected = 0;
         try {
              rowsAffected = namedParameterJdbcTemplate.update(deletePermissionForExistingRoleQuery, params);
-        }catch (Exception e){
+        }catch (DataAccessException e){
             System.err.println(e.getMessage());
         }
         if(rowsAffected > 0) return true;

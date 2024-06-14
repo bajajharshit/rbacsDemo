@@ -1,5 +1,7 @@
 package perfios.rbacs.Repository.UserRepository;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.GrantedAuthority;
@@ -7,11 +9,13 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.RequestBody;
 import perfios.rbacs.Model.LoginPost.LoginPostOb;
 import perfios.rbacs.Model.LoginResponse.LoginResponse;
 import perfios.rbacs.Model.LoginResponse.LoginResponse2;
 import perfios.rbacs.Model.Users.User;
 import perfios.rbacs.Model.Users.UserDashboard;
+import perfios.rbacs.Model.Users.UserSearch;
 import perfios.rbacs.RbacsApplication;
 
 import javax.print.DocFlavor;
@@ -56,6 +60,9 @@ public class UserServiceImplementation implements UserService{
         this.dataSource = dataSource;
     }
 
+    @Autowired
+    JdbcTemplate jdbcTemplate;
+
 
     //may be required later.
     private int sessionUserId =0;
@@ -97,10 +104,10 @@ public class UserServiceImplementation implements UserService{
 
     @Override
     public String getRoleName(int roleId){
+        RbacsApplication.printString("here and roleId = " + roleId);
         String role = roleDetails.get(roleId);
         String roleName = "ROLE_" + role.toUpperCase();
         return roleName;
-
     }
 
 
@@ -127,6 +134,170 @@ public class UserServiceImplementation implements UserService{
         String roleId = getRoleIdFromRole.get(roleName);
         return roleId;
     }
+
+
+    @Override
+    public List<UserDashboard> dashboardFindUserByDifferentFeilds(UserSearch userSearch) {
+        RbacsApplication.printString(userSearch.toString());
+        Boolean fireQuery = false;
+        StringBuilder userSearchQuery = new StringBuilder("SELECT ud.user_id, ud.user_email," +
+                " ud.enabled," +
+                " utr.role_id" +
+                " FROM user_details ud" +
+                " JOIN user_to_role utr ON ud.user_id = utr.user_id WHERE ");
+        if (userSearch.getUserAlternateName() != null && userSearch.getUserAlternateName().isEmpty() == false) {
+            if (fireQuery == false) {
+                userSearchQuery.append("ud.alternate_username LIKE '" + userSearch.getUserAlternateName() + "%' ");
+                fireQuery = true;
+
+            } else {
+                userSearchQuery.append("AND ud.alternate_username LIKE '" + userSearch.getUserAlternateName() + "%' ");
+            }
+        }
+        if (userSearch.getUserFirstName() != null && userSearch.getUserFirstName().isEmpty() == false) {
+            if (fireQuery == false) {
+                userSearchQuery.append("ud.user_first_name LIKE '%" + userSearch.getUserFirstName() + "%' ");
+                fireQuery = true;
+            } else {
+                userSearchQuery.append("AND ud.user_first_name LIKE '%" + userSearch.getUserFirstName() + "%' ");
+            }
+        }
+        if (userSearch.getUserLastName() != null && userSearch.getUserLastName().isEmpty() == false) {
+            if (fireQuery == false) {
+                userSearchQuery.append("ud.user_last_name LIKE '" + userSearch.getUserLastName() + "%' ");
+                fireQuery = true;
+            } else {
+                userSearchQuery.append("AND ud.user_last_name LIKE '" + userSearch.getUserLastName() + "%' ");
+            }
+        }
+        if (userSearch.getUserRoleName() != null && userSearch.getUserRoleName().isEmpty() == false) {
+            String roleIdInString = getRoleIdFromRole(userSearch.getUserRoleName());
+            if (roleIdInString == null || roleIdInString.isEmpty()) {
+                for (String key : getRoleIdFromRole.keySet()) {
+                    RbacsApplication.printString("key = " + key);
+                    if (key.contains(userSearch.getUserRoleName().toUpperCase())) {
+                        roleIdInString = getRoleIdFromRole.get(key);
+                        RbacsApplication.printString("role matched");
+                        break;
+                    }
+                }
+                if (roleIdInString != null && roleIdInString.isEmpty() == false) {
+                    if (fireQuery == false) {
+                        userSearchQuery.append(" utr.role_id = " + roleIdInString);
+                        fireQuery = true;
+                    } else userSearchQuery.append(" AND utr.role_id = " + roleIdInString);
+                }
+            }
+        }
+
+        RbacsApplication.printString(fireQuery + userSearchQuery.toString());
+        if (fireQuery == false) return null;
+        List<UserDashboard> userDashboardList  = new ArrayList<>();
+        try{
+            Connection connection = dataSource.getConnection();
+            PreparedStatement statement = connection.prepareStatement(userSearchQuery.toString());
+            ResultSet resultSet = statement.executeQuery();
+            if(!resultSet.next()) return null;
+            do {
+                UserDashboard userDashboard = new UserDashboard();
+                userDashboard.setUserEmail(resultSet.getString("user_email"));
+                userDashboard.setUserId(resultSet.getInt("user_id"));
+                userDashboard.setRoleName(roleDetails.get(resultSet.getInt("role_id")));
+                userDashboardList.add(userDashboard);
+            }while(resultSet.next());
+        }catch (SQLException e){
+            System.err.println(e.getMessage());
+        }
+        return userDashboardList;
+    }
+
+    @Override
+    public List<User> findUserByDifferentFeilds(UserSearch userSearch) {
+        RbacsApplication.printString(userSearch.toString());
+        Boolean fireQuery = false;
+        StringBuilder userSearchQuery = new StringBuilder("SELECT ud.user_id, ud.user_first_name, ud.user_last_name, ud.user_email," +
+                " ud.user_password, ud.status, ud.user_phone_number, ud.enabled," +
+                " ud.is_super_admin, ud.should_loan_auto_apply, ud.alternate_username," +
+                " utr.role_id" +
+                " FROM user_details ud" +
+                " JOIN user_to_role utr ON ud.user_id = utr.user_id WHERE ");
+        if (userSearch.getUserAlternateName() != null && userSearch.getUserAlternateName().isEmpty() == false) {
+            if (fireQuery == false) {
+                userSearchQuery.append("ud.alternate_username LIKE '" + userSearch.getUserAlternateName() + "%' ");
+                fireQuery = true;
+
+            } else {
+                userSearchQuery.append("AND ud.alternate_username LIKE '" + userSearch.getUserAlternateName() + "%' ");
+            }
+        }
+        if (userSearch.getUserFirstName() != null && userSearch.getUserFirstName().isEmpty() == false) {
+            if (fireQuery == false) {
+                userSearchQuery.append("ud.user_first_name LIKE '%" + userSearch.getUserFirstName() + "%' ");
+                fireQuery = true;
+            } else {
+                userSearchQuery.append("AND ud.user_first_name LIKE '%" + userSearch.getUserFirstName() + "%' ");
+            }
+        }
+        if (userSearch.getUserLastName() != null && userSearch.getUserLastName().isEmpty() == false) {
+            if (fireQuery == false) {
+                userSearchQuery.append("ud.user_last_name LIKE '" + userSearch.getUserLastName() + "%' ");
+                fireQuery = true;
+            } else {
+                userSearchQuery.append("AND ud.user_last_name LIKE '" + userSearch.getUserLastName() + "%' ");
+            }
+        }
+        if (userSearch.getUserRoleName() != null && userSearch.getUserRoleName().isEmpty() == false) {
+            String roleIdInString = getRoleIdFromRole(userSearch.getUserRoleName());
+            if (roleIdInString == null || roleIdInString.isEmpty()) {
+                for (String key : getRoleIdFromRole.keySet()) {
+                    RbacsApplication.printString("key = " + key);
+                    if (key.contains(userSearch.getUserRoleName().toUpperCase())) {
+                        roleIdInString = getRoleIdFromRole.get(key);
+                        RbacsApplication.printString("role matched");
+                        break;
+                    }
+                }
+                if (roleIdInString != null && roleIdInString.isEmpty() == false) {
+                    if (fireQuery == false) {
+                        userSearchQuery.append(" utr.role_id = " + roleIdInString);
+                        fireQuery = true;
+                    } else userSearchQuery.append(" AND utr.role_id = " + roleIdInString);
+                }
+            }
+        }
+
+        RbacsApplication.printString(fireQuery + userSearchQuery.toString());
+        if (fireQuery == false) return null;
+        List<User> userList = new ArrayList<>();
+        try{
+            Connection connection = dataSource.getConnection();
+            PreparedStatement statement = connection.prepareStatement(userSearchQuery.toString());
+            ResultSet resultSet = statement.executeQuery();
+            if(!resultSet.next()) return null;
+            do{
+                User newUser = new User();
+                newUser.setUserId(resultSet.getInt("user_id"));
+                newUser.setUserFirstName(resultSet.getString("user_first_name"));
+                newUser.setUserLastName(resultSet.getString("user_last_name"));
+                newUser.setUserEmail(resultSet.getString("user_email"));
+                newUser.setUserPassword(resultSet.getString("user_password"));
+                newUser.setUserStatus(resultSet.getString("status"));
+                newUser.setUserPhoneNumber(resultSet.getString("user_phone_number"));
+                newUser.setEnabled(resultSet.getBoolean("enabled"));
+                newUser.setIsSuperAdmin(resultSet.getBoolean("is_super_admin"));
+                newUser.setShouldLoanAutoApply(resultSet.getBoolean("should_loan_auto_apply"));
+                newUser.setAlternateUsername(resultSet.getString("alternate_username"));
+                newUser.setUserRoleId(resultSet.getInt("role_id"));
+                newUser.setUserRoleName(getRoleName(newUser.getUserRoleId()));
+                userList.add(newUser);
+            }while(resultSet.next());
+        }catch (SQLException e){
+            System.err.println(e.getMessage());
+        }
+        return userList;
+    }
+
+
 
 
     //this below methord is for jwt, use to validate user agaist database using its id.
@@ -340,7 +511,7 @@ public LoginResponse getUserLogin(){
 
     //function to add new user from now onwards
     @Override
-    public String addNewUser(User user){
+    public String addNewUser(@Valid User user){
         if(checkEmailAlreadyExist(user.getUserEmail())) return "TRY WITH A DIFFERENT EMAIL";
         Connection connection = null;
         try{

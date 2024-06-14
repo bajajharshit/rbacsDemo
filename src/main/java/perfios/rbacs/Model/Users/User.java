@@ -8,6 +8,7 @@ import lombok.Data;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Data
 
@@ -50,5 +51,36 @@ public class User {
     Boolean enabled;
     Boolean isSuperAdmin;
     Boolean shouldLoanAutoApply;
+
+
+       /*
+    {
+"userFirstName": "userSeven",
+"userLastName": "userSevenLastName",
+"userPassword": "userSevenPassword",
+"userPhoneNumber": "9889487778",
+"userStatus": "Active",
+"userEmail": "userseven@example.com",
+"userRoleId": 5,
+"enabled": true,
+"isSuperAdmin": false,
+"shouldLoanAutoApply": 0
+}
+
+     */
+
+
+    public void setFeildsFromMapForCsvFile(Map<String,String> individualUser){
+        setUserFirstName(individualUser.get("userFirstName"));
+        setUserLastName(individualUser.get("userLastName"));
+        setUserPassword(individualUser.get("userPassword"));
+        setUserPhoneNumber(individualUser.get("userPhoneNumber"));
+        setUserStatus(individualUser.get("userStatus"));
+        setUserEmail(individualUser.get("userEmail"));
+        setUserRoleId(Integer.parseInt(individualUser.get("userRoleId")));
+        setEnabled(Boolean.parseBoolean(individualUser.get("enabled")));
+        setIsSuperAdmin(Boolean.parseBoolean(individualUser.get("isSuperAdmin")));
+        setShouldLoanAutoApply(Boolean.parseBoolean(individualUser.get("shouldLoanAutoApply")));
+    }
 
 }

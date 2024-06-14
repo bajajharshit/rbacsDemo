@@ -73,6 +73,7 @@ public class RoleController {
     @PutMapping("permission/{permissionName}/role/{roleId}/view/{canView}")
     public String updateViewAccessForPermissionType(@PathVariable String permissionName, @PathVariable int roleId, @PathVariable Boolean canView){
         String pId = redisDataService.getPermissionId(permissionName);
+        if(pId == null) return "Invalid permission passed !!! " ;
         int permissionId = Integer.valueOf(pId);
         Boolean check = roleService.UpdateViewAccessForRoleAndPermission(roleId,permissionId,canView);
         if(check){
@@ -85,9 +86,10 @@ public class RoleController {
     }
 
 //    @PreAuthorize("hasRole('ROLE_ADMINISTRATOR')")
-    @PutMapping("permission/{permissionName}/role/{roleId}/edit/{canView}")
+    @PutMapping("permission/{permissionName}/role/{roleId}/edit/{canEdit}")
     public String updateEditAccessForPermissionType(@PathVariable String permissionName, @PathVariable int roleId, @PathVariable Boolean canEdit){
         String pId = redisDataService.getPermissionId(permissionName);
+        if(pId == null) return "invalid permission passed";
         int permissionId = Integer.valueOf(pId);
         Boolean check = roleService.UpdateEditAccessForRoleAndPermission(roleId,permissionId,canEdit);
         if(check){

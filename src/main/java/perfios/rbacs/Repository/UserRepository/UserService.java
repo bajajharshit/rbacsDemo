@@ -7,6 +7,7 @@ import perfios.rbacs.Model.LoginResponse.LoginResponse;
 import perfios.rbacs.Model.LoginResponse.LoginResponse2;
 import perfios.rbacs.Model.Users.User;
 import perfios.rbacs.Model.Users.UserDashboard;
+import perfios.rbacs.Model.Users.UserSearch;
 
 import java.util.HashMap;
 import java.util.List;
@@ -33,4 +34,6 @@ public interface UserService {
     void printRoleDetails();
     int getVerifiedUserId() ;
     void resetVerifiedUserId();
+    List<User> findUserByDifferentFeilds(UserSearch userSearch);
+    List<UserDashboard> dashboardFindUserByDifferentFeilds(UserSearch userSearch);
 }

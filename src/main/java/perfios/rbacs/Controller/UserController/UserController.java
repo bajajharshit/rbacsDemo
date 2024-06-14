@@ -24,6 +24,7 @@ import perfios.rbacs.JwtToken.JwtTokenService;
 import perfios.rbacs.JwtToken.JwtTokenService2;
 import perfios.rbacs.Model.Users.User;
 import perfios.rbacs.Model.Users.UserDashboard;
+import perfios.rbacs.Model.Users.UserSearch;
 import perfios.rbacs.RbacsApplication;
 import perfios.rbacs.Repository.Redis.Access;
 import perfios.rbacs.Repository.Redis.RedisDataService;
@@ -80,7 +81,16 @@ public class UserController {
     }
 
 
+    @PostMapping("/user-search")
+    public List<User> getUsersBasedOnSearch(@RequestBody UserSearch userSearch){
+        return userService.findUserByDifferentFeilds(userSearch);
+    }
 
+
+    @PostMapping("/user-dashboard-searched")
+    public List<UserDashboard> getUsersDashboardBasedOnSearch(@RequestBody UserSearch userSearch){
+        return userService.dashboardFindUserByDifferentFeilds(userSearch);
+    }
 
 
     //this is for user dashboard (user_id, user email, user role)

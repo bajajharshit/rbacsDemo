@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.multipart.MultipartFile;
 import perfios.rbacs.Model.Users.User;
+import perfios.rbacs.Model.Users.UserSearch;
 import perfios.rbacs.RbacsApplication;
 import perfios.rbacs.Repository.UserRepository.UserService;
 
@@ -75,16 +76,18 @@ public class FileServicesImplementation implements FileServices{
             Iterator<CSVRecord> record = parser.iterator();
 //            RbacsApplication.printString(record.next().toMap().toString());
             List<String> verificationList = new ArrayList<>();
-            while(record.hasNext()){
+            while(record.hasNext()) {
 //                RbacsApplication.printString("first line = " + record.hasNext());
                 User user = new User();
                 try {
-                    user.setFeildsFromMapForCsvFile(record.next().toMap());
-                }catch(java.lang.Exception e){
+                    Boolean check = user.setFeildsFromMapForCsvFile(record.next().toMap());
+                    RbacsApplication.printString(user.toString());
+                    if(check) verificationList.add(user.getUserEmail() + " -> " + userService.addNewUser(user));
+                    else verificationList.add(user.getUserEmail() + " -> " + "INVALID VALUES PASSED");
+
+                } catch (java.lang.Exception e) {
                     System.err.println(e.getMessage());
                 }
-                RbacsApplication.printString(user.toString());
-                verificationList.add(user.getUserEmail() + " -> " + userService.addNewUser(user));
             }
             return verificationList;
         }catch (IOException e){
@@ -138,26 +141,38 @@ public class FileServicesImplementation implements FileServices{
             for(Cell cell : row){
                 String key = headerName.next().getStringCellValue();
                 CellType cellType = cell.getCellType();
+                if(cellType == CellType.BLANK || cellType == CellType._NONE){
+                    RbacsApplication.printString(key + " inside cell tupe ");
+                }
                 switch(cellType){
                     case NUMERIC -> {
-                        RbacsApplication.printString("value for " + key + " = " + cell.getNumericCellValue());
-                        userMap.put(key,String.valueOf(((int)cell.getNumericCellValue())));
+                        RbacsApplication.printString("value for numeric " + key + " = " + cell.getNumericCellValue());
+                        userMap.put(key,String.valueOf(((long)cell.getNumericCellValue())));
                     }case STRING -> {
+                        RbacsApplication.printString("value for string " + key + " = " + cell.getStringCellValue());
                         if(cell.getStringCellValue() == null || cell.getStringCellValue().isEmpty()){
                             check = false;
                             break;
                         }
                         userMap.put(key,cell.getStringCellValue());
                     }
+                    case BOOLEAN -> {
+                        RbacsApplication.printString("value for boolean " + key + " = " + cell.getBooleanCellValue());
+                        userMap.put(key,String.valueOf(cell.getBooleanCellValue()));
+                    }
                 }
             }
             if(check) {
                 User user = new User();
                 RbacsApplication.printString("current map = " + userMap);
-                user.setFeildsFromMapForCsvFile(userMap);
-                RbacsApplication.printString(user.toString());
-                verificationList.add(user.getUserEmail() + " -> " + userService.addNewUser(user));
-                RbacsApplication.printString(verificationList.toString());
+                Boolean toAdd = user.setFeildsFromMapForCsvFile(userMap);
+                if(toAdd) {
+                    RbacsApplication.printString("user = " + user.toString());
+                    verificationList.add(user.getUserEmail() + " -> " + userService.addNewUser(user));
+                    RbacsApplication.printString(verificationList.toString());
+                }else{
+                    verificationList.add(userMap.get("userEmail") + " -> FAILED DUE TO INVALID VALUES PASSED");
+                }
             }
         }
         return verificationList;
@@ -218,12 +233,13 @@ public class FileServicesImplementation implements FileServices{
 
         }
 
-        File currDir = new File("/home/harshit.baja/Desktop/sampleFile/");
-        String path = currDir.getAbsolutePath();
-        String fileLocation = path + "userDetails.xlsx";
+        String homeDestination = System.getProperty("user.home");
+        String filePath = homeDestination + "/Desktop/sampleFIle/AllUsers/";
+        String fileName = "AllUserFile" + System.currentTimeMillis()/10000 + ".xlsx";
+        File file = new File(filePath ,fileName);
 
         try {
-            FileOutputStream outputStream = new FileOutputStream(fileLocation);
+            FileOutputStream outputStream = new FileOutputStream(file);
             workbook.write(outputStream);
             workbook.close();
         }catch (IOException e){
@@ -232,9 +248,80 @@ public class FileServicesImplementation implements FileServices{
 
 
 
-        return "saved at " + fileLocation;
+        return "saved at " + file;
     }
 
+
+    @Override
+    public String getUserDetailsInXlsxFileBasedOnSearch(UserSearch userSearch) {
+        List<User> allUsers= userService.findUserByDifferentFeilds(userSearch);
+
+        RbacsApplication.printString("fetched users = " + allUsers);
+        Workbook workbook  = new XSSFWorkbook();
+        Sheet sheet  = workbook.createSheet("All Users");
+
+
+        Row header = sheet.createRow(0);
+        CellStyle headerStyle = workbook.createCellStyle();
+        headerStyle.setFillBackgroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+
+        //creating headers
+        List<String> headerList = new ArrayList<>();
+        headerList.add("User Id");
+        headerList.add("User First Name");
+        headerList.add("User Last Name");
+        headerList.add("User Password");
+        headerList.add("User Phone Number");
+        headerList.add("Alternate Username");
+        headerList.add("User Status");
+        headerList.add("User Email");
+        headerList.add("User Role Name");
+        headerList.add("User Role Id");
+        headerList.add("Enabled");
+        headerList.add("Is Super Admin");
+        headerList.add("Should Loan Auto Apply");
+
+
+
+        int columnCount = 0;
+        for(String headerCellValue : headerList){
+            sheet.setColumnWidth(columnCount, 6000);
+            Cell headerCell = header.createCell(columnCount++);
+            headerCell.setCellStyle(headerStyle);
+            headerCell.setCellValue(headerCellValue);
+        }
+
+
+        int rowCount = 1;
+
+        for(User user : allUsers){
+            Row userRow = sheet.createRow(rowCount++);
+            Map<Integer, Object> userMap = fillUserMap(user);
+            columnCount = 0;
+            while(userMap.containsKey(columnCount)){
+                Cell userDataCell = userRow.createCell(columnCount);
+                userDataCell.setCellValue(String.valueOf(userMap.get(columnCount)));
+                columnCount++;
+            }
+
+        }
+        String homeDestination = System.getProperty("user.home");
+        String filePath = homeDestination + "/Desktop/sampleFIle/filteredUsers/";
+        String fileName = "filteredUserFile" + System.currentTimeMillis()/10000 + ".xlsx";
+        File file = new File(filePath ,fileName);
+
+        try {
+            FileOutputStream outputStream = new FileOutputStream(file);
+            workbook.write(outputStream);
+            workbook.close();
+        }catch (IOException e){
+            return  "failed " + e.getMessage();
+        }
+
+
+
+        return "saved at " + filePath;
+    }
 
     public static Map<Integer,Object> fillUserMap(User user){
         int cc = 0;

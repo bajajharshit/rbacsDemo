@@ -512,7 +512,7 @@ public LoginResponse getUserLogin(){
     //function to add new user from now onwards
     @Override
     public String addNewUser(@Valid User user){
-        if(checkEmailAlreadyExist(user.getUserEmail())) return "TRY WITH A DIFFERENT EMAIL";
+        if(user.getUserEmail() == null || user.getUserEmail().isEmpty() || checkEmailAlreadyExist(user.getUserEmail())) return "TRY WITH A DIFFERENT EMAIL";
         Connection connection = null;
         try{
             connection = dataSource.getConnection();

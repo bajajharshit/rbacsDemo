@@ -193,15 +193,15 @@ public class UserController {
         String roleId = roleIdFromRoleName();
         Access access = redisDataService.getPermissionAccessFromRedis(roleId,permissionId);
         if(access.isCanEdit() == false) return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("YOU ARE UNAUTHORIZED TO PERFORM THIS OPERATION");
-        if (bindingResult.hasErrors()) {
-            StringBuilder errorMessage = new StringBuilder();
-            errorMessage.append("400 BAD REQUEST\nThis request cannot be fulfilled due to validation errors:\n");
-            for (ObjectError error : bindingResult.getAllErrors()) {
-                errorMessage.append(error.getDefaultMessage());
-                errorMessage.append(".\n");
-            }
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorMessage.toString());
-        }
+//        if (bindingResult.hasErrors()) {
+//            StringBuilder errorMessage = new StringBuilder();
+//            errorMessage.append("400 BAD REQUEST\nThis request cannot be fulfilled due to validation errors:\n");
+//            for (ObjectError error : bindingResult.getAllErrors()) {
+//                errorMessage.append(error.getDefaultMessage());
+//                errorMessage.append(".\n");
+//            }
+//            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorMessage.toString());
+//        }
 
         String result = userService.updateUser(user, id);
         return ResponseEntity.ok(result);

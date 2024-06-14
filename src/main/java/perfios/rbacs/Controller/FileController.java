@@ -5,6 +5,7 @@ import org.springframework.security.core.parameters.P;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.ModelAndView;
+import perfios.rbacs.Model.Users.UserSearch;
 import perfios.rbacs.Repository.FileRepository.FileServices;
 
 import java.util.ArrayList;
@@ -44,5 +45,10 @@ public class FileController {
     @GetMapping("/file/upload/xlxs")
     public ModelAndView uploadXlxsFile(){
         return new ModelAndView ("fileUploadXlxs");
+    }
+
+    @GetMapping("/download-users-based-on-search")
+    public String getUserDetailsExcelBasedOnFilters(@RequestBody UserSearch userSearch){
+        return fileServices.getUserDetailsInXlsxFileBasedOnSearch(userSearch);
     }
 }

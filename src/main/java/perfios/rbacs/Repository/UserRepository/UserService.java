@@ -36,4 +36,5 @@ public interface UserService {
     void resetVerifiedUserId();
     List<User> findUserByDifferentFeilds(UserSearch userSearch);
     List<UserDashboard> dashboardFindUserByDifferentFeilds(UserSearch userSearch);
+    List<UserDashboard> getUsersDashboardForWithPageNumber(int pageNo, int limit);
 }

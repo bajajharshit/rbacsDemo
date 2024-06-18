@@ -2,6 +2,7 @@ package perfios.rbacs.Repository.UserRepository;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.GrantedAuthority;
@@ -50,7 +51,7 @@ public class UserServiceImplementation implements UserService{
     private static final String getAllPermissionIdsForUserByIdQuery = "select rtp.permission_id, role_id from role_to_permission rtp where role_id = (select role_id from user_to_role where user_id = ?);";
     private static final String validateUserAgaistUserIdQuery = "select user_email,user_password,enabled from user_details where user_id = ?";
     private static final String fetchAdminPermissionsQuery = "select permission_id, can_view, can_edit from role_to_permission_type where role_id = 1";
-
+    private static final String getUserDashboardPageQuery = "SELECT ud.user_id, ud.user_email, utr.role_id from user_details ud, user_to_role utr WHERE ud.user_id = utr.user_id limit :limit offset :offset;";
 
     //datasource object for connection pooling with JDBC
     private final DataSource dataSource;
@@ -63,6 +64,9 @@ public class UserServiceImplementation implements UserService{
     @Autowired
     JdbcTemplate jdbcTemplate;
 
+
+    @Autowired
+    NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
     //may be required later.
     private int sessionUserId =0;
@@ -106,6 +110,7 @@ public class UserServiceImplementation implements UserService{
     public String getRoleName(int roleId){
         RbacsApplication.printString("here and roleId = " + roleId);
         String role = roleDetails.get(roleId);
+        if(role == null) return null;
         String roleName = "ROLE_" + role.toUpperCase();
         return roleName;
     }
@@ -298,7 +303,24 @@ public class UserServiceImplementation implements UserService{
     }
 
 
-
+    @Override
+    public List<UserDashboard> getUsersDashboardForWithPageNumber(int pageNo, int limit) {
+        HashMap<String,Object> params = new HashMap<>();
+        params.put("limit",limit);
+        params.put("offset",pageNo*limit);
+        List<UserDashboard> userDashboardList = new ArrayList<>();
+        namedParameterJdbcTemplate.query(getUserDashboardPageQuery, params, new RowCallbackHandler() {
+            @Override
+            public void processRow(ResultSet rs) throws SQLException {
+                UserDashboard dashboardRow = new UserDashboard();
+                dashboardRow.setUserId(rs.getInt("user_id"));
+                dashboardRow.setUserEmail(rs.getString("user_email"));
+                dashboardRow.setRoleName(getRoleName(rs.getInt("role_id")).substring(5));
+                userDashboardList.add(dashboardRow);
+            }
+        });
+        return userDashboardList;
+    }
 
     //this below methord is for jwt, use to validate user agaist database using its id.
     @Override

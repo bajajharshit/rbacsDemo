@@ -93,6 +93,16 @@ public class UserController {
     }
 
 
+
+    @PostMapping("/user/dashboard/rows/{limit}/page/{pageNo}")
+    public List<UserDashboard>  getUsersDashboardWithPageNumber(@PathVariable int limit, @PathVariable int pageNo){
+        return userService.getUsersDashboardForWithPageNumber(pageNo,limit);
+    }
+
+
+
+
+
     //this is for user dashboard (user_id, user email, user role)
     @PreAuthorize("hasAnyRole('ROLE_ADMINISTRATOR','ROLE_BANK-OFFICER')")
     @GetMapping("user/dashboard")

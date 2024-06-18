@@ -8,4 +8,5 @@ public class UserSearch {
     String userLastName;
     String userAlternateName;
     String userRoleName;
+    String userEmailId;
 }

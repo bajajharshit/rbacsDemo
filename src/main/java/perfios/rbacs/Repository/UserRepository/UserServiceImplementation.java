@@ -174,15 +174,22 @@ public class UserServiceImplementation implements UserService{
             } else {
                 userSearchQuery.append("AND ud.user_last_name LIKE '" + userSearch.getUserLastName() + "%' ");
             }
+        }if (userSearch.getUserEmailId() != null && userSearch.getUserEmailId().isEmpty() == false) {
+            if (fireQuery == false) {
+                userSearchQuery.append("ud.user_email LIKE '%" + userSearch.getUserEmailId() + "%' ");
+                fireQuery = true;
+            } else {
+                userSearchQuery.append("AND ud.user_email LIKE '%" + userSearch.getUserEmailId() + "%' ");
+            }
         }
         if (userSearch.getUserRoleName() != null && userSearch.getUserRoleName().isEmpty() == false) {
             String roleIdInString = getRoleIdFromRole(userSearch.getUserRoleName());
             if (roleIdInString == null || roleIdInString.isEmpty()) {
                 for (String key : getRoleIdFromRole.keySet()) {
-                    RbacsApplication.printString("key = " + key);
+//                    RbacsApplication.printString("key = " + key);
                     if (key.contains(userSearch.getUserRoleName().toUpperCase())) {
                         roleIdInString = getRoleIdFromRole.get(key);
-                        RbacsApplication.printString("role matched");
+//                        RbacsApplication.printString("role matched");
                         break;
                     }
                 }
@@ -195,7 +202,7 @@ public class UserServiceImplementation implements UserService{
             }
         }
 
-        RbacsApplication.printString(fireQuery + userSearchQuery.toString());
+//        RbacsApplication.printString(fireQuery + userSearchQuery.toString());
         if (fireQuery == false) return null;
         List<UserDashboard> userDashboardList  = new ArrayList<>();
         try{
@@ -228,11 +235,11 @@ public class UserServiceImplementation implements UserService{
                 " JOIN user_to_role utr ON ud.user_id = utr.user_id WHERE ");
         if (userSearch.getUserAlternateName() != null && userSearch.getUserAlternateName().isEmpty() == false) {
             if (fireQuery == false) {
-                userSearchQuery.append("ud.alternate_username LIKE '" + userSearch.getUserAlternateName() + "%' ");
+                userSearchQuery.append("ud.alternate_username LIKE '%" + userSearch.getUserAlternateName() + "%' ");
                 fireQuery = true;
 
             } else {
-                userSearchQuery.append("AND ud.alternate_username LIKE '" + userSearch.getUserAlternateName() + "%' ");
+                userSearchQuery.append("AND ud.alternate_username LIKE '%" + userSearch.getUserAlternateName() + "%' ");
             }
         }
         if (userSearch.getUserFirstName() != null && userSearch.getUserFirstName().isEmpty() == false) {
@@ -245,10 +252,17 @@ public class UserServiceImplementation implements UserService{
         }
         if (userSearch.getUserLastName() != null && userSearch.getUserLastName().isEmpty() == false) {
             if (fireQuery == false) {
-                userSearchQuery.append("ud.user_last_name LIKE '" + userSearch.getUserLastName() + "%' ");
+                userSearchQuery.append("ud.user_last_name LIKE '%" + userSearch.getUserLastName() + "%' ");
                 fireQuery = true;
             } else {
-                userSearchQuery.append("AND ud.user_last_name LIKE '" + userSearch.getUserLastName() + "%' ");
+                userSearchQuery.append("AND ud.user_last_name LIKE '%" + userSearch.getUserLastName() + "%' ");
+            }
+        }if (userSearch.getUserEmailId() != null && userSearch.getUserEmailId().isEmpty() == false) {
+            if (fireQuery == false) {
+                userSearchQuery.append("ud.user_email LIKE '%" + userSearch.getUserEmailId() + "%' ");
+                fireQuery = true;
+            } else {
+                userSearchQuery.append("AND ud.user_email LIKE '%" + userSearch.getUserEmailId() + "%' ");
             }
         }
         if (userSearch.getUserRoleName() != null && userSearch.getUserRoleName().isEmpty() == false) {

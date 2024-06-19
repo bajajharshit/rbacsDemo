@@ -30,7 +30,7 @@ public class UserDetailsServiceImplementation2 implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         RbacsApplication.printString("Inside UDSI2");
         LoginResponse2 loginResponse= userService.loadUserByEmailId2(username);
-        RbacsApplication.printString("loginres2 = " + loginResponse.toString());
+//        RbacsApplication.printString("loginres2 = " + loginResponse.toString());
         if (loginResponse == null) {
             return null;
         }

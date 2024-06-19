@@ -23,7 +23,7 @@ import perfios.rbacs.Model.LoginPost.LoginPostOb;
 import perfios.rbacs.Model.LoginResponse.LoginResponse;
 import perfios.rbacs.RbacsApplication;
 import perfios.rbacs.Repository.UserRepository.UserService;
-import perfios.rbacs.Security.CustomAuthenticationProvider;
+import perfios.rbacs.Security.CustomAuthenticatorProvider2;
 import perfios.rbacs.Security.UserDetailsServiceImplementation;
 
 @CrossOrigin
@@ -37,7 +37,7 @@ public class LoginSessionController {
     UserDetailsServiceImplementation userDetailsServiceImplementation;
 
     @Autowired
-    CustomAuthenticationProvider customAuthenticationProvider;
+    CustomAuthenticatorProvider2 customAuthenticatorProvider;
 
     SecurityContextLogoutHandler logoutHandler = new SecurityContextLogoutHandler();
 
@@ -47,7 +47,7 @@ public class LoginSessionController {
 
     @GetMapping("/login")
     public ModelAndView showLoginForm(Model model, HttpServletRequest request) {
-        if (request.getSession().getAttribute("id") != null)
+        if (request.getSession().getAttribute("role") != null)
             return new ModelAndView("homepage");
 
         model.addAttribute("loginPostOb", new LoginPostOb());
@@ -79,7 +79,7 @@ public class LoginSessionController {
         UsernamePasswordAuthenticationToken authenticationToken =
                 new UsernamePasswordAuthenticationToken(userEmail, userPassword);
 
-        Authentication authentication = customAuthenticationProvider.authenticate(authenticationToken);
+        Authentication authentication = customAuthenticatorProvider.authenticate(authenticationToken);
 
         if(authentication == null) return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body("Bad credentials");
 
@@ -94,18 +94,18 @@ public class LoginSessionController {
         HttpHeaders httpHeaders = new HttpHeaders();
         httpHeaders.add("Content-type","JSON");
 
-        LoginResponse loginResponse = userService.getUserLogin();
+//        LoginResponse loginResponse = userService.getUserLogin();
 
-        session.setAttribute("id",loginResponse.getUserId());
+        session.setAttribute("role",authentication.getAuthorities().toString());
 
 //        if(loginResponse.getUserPermissionId().contains("7")) session.setAttribute("viewAll",true);
 
-        RbacsApplication.printString(loginResponse.toString());
+//        RbacsApplication.printString(loginResponse.toString());
         RbacsApplication.printString(authentication.toString());
         RbacsApplication.printString("--->" +SecurityContextHolder.getContext().getAuthentication().toString());
 
-        return ResponseEntity.ok(loginResponse);
-
+//        return ResponseEntity.ok(loginResponse);
+return ResponseEntity.ok(authentication.getAuthorities());
     }
 
     @PostMapping(value = "/loginpostman")
@@ -131,7 +131,7 @@ public class LoginSessionController {
         UsernamePasswordAuthenticationToken authenticationToken =
                 new UsernamePasswordAuthenticationToken(userEmail, userPassword);
 
-        Authentication authentication = customAuthenticationProvider.authenticate(authenticationToken);
+        Authentication authentication = customAuthenticatorProvider.authenticate(authenticationToken);
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
         if(authentication == null) return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body("Bad credentials");
@@ -158,10 +158,23 @@ public class LoginSessionController {
     public String performLogout(Authentication authentication, HttpServletRequest request, HttpServletResponse response) {
         this.logoutHandler.logout(request, response, authentication);
         HttpSession session = request.getSession();
-        session.removeAttribute("id");
+        session.removeAttribute("role");
         session.removeAttribute("viewAll");
+        userService.resetVerifiedUserId();
         return "logout successful";
     }
+
+
+
+
+    @GetMapping("/checking2")
+    public String  check2(HttpServletRequest request){
+        if(!securityContextRepository.containsContext(request)){
+            return "False";
+        }
+        return securityContextRepository.containsContext(request) + "  " + SecurityContextHolder.getContext();
+    }
+
 
 
     @ExceptionHandler(ConstraintViolationException.class)

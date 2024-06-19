@@ -15,8 +15,10 @@ import org.springframework.security.web.authentication.logout.SecurityContextLog
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
 import perfios.rbacs.Component.DataInitializer;
@@ -94,9 +96,10 @@ public class UserController {
 
 
 
-    @PostMapping("/user/dashboard/rows/{limit}/page/{pageNo}")
-    public List<UserDashboard>  getUsersDashboardWithPageNumber(@PathVariable int limit, @PathVariable int pageNo){
-        return userService.getUsersDashboardForWithPageNumber(pageNo,limit);
+    @PostMapping("/user/dashboard/rows/{limit}/page")
+    public List<UserDashboard>  getUsersDashboardWithPageNumber(@PathVariable int limit, @RequestParam String pageNo){
+        if(pageNo == null) return null;
+        return userService.getUsersDashboardForWithPageNumber(Integer.parseInt(pageNo),limit);
     }
 
 
@@ -131,19 +134,19 @@ public class UserController {
 
 
     //this methord receives a json of user model type and adds user into user_details table and user_to_role table correspondingly
-    @PreAuthorize("hasRole('ROLE_ADMINISTRATOR')")
-    @PostMapping("user")
+//    @PreAuthorize("hasRole('ROLE_ADMINISTRATOR')")
+    @PostMapping("/user")
     public ResponseEntity<String> addNewUser(@Valid @RequestBody User user, BindingResult bindingResult) {
-        if (bindingResult.hasErrors()) {
-            StringBuilder errorMessage = new StringBuilder();
-            errorMessage.append("Validation errors occurred:\n");
-            for (ObjectError error : bindingResult.getAllErrors()) {
-                errorMessage.append("- ");
-                errorMessage.append(error.getDefaultMessage());
-                errorMessage.append("\n");
-            }
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorMessage.toString());
-        }
+//        if (bindingResult.hasErrors()) {
+//            StringBuilder errorMessage = new StringBuilder();
+//            errorMessage.append("Validation errors occurred:\n");
+//            for (ObjectError error : bindingResult.getAllErrors()) {
+//                errorMessage.append("- ");
+//                errorMessage.append(error.getDefaultMessage());
+//                errorMessage.append("\n");
+//            }
+//            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorMessage.toString());
+//        }
 
         String result = userService.addNewUser(user);
         return ResponseEntity.ok(result);
@@ -221,10 +224,11 @@ public class UserController {
 
     //this function catches all the validation errors based on validation done in respective models.
     @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<String> handleConstraintViolation(ConstraintViolationException ex) {
+    public ResponseEntity<String> handleConstraintViolation(ConstraintViolationException ex, BindingResult bindingResult) {
         StringBuilder errorMessage = new StringBuilder();
         errorMessage.append(" STATUS: 400 BAD REQUEST (SOME INPUTS ARE INVALID)\n");
         ex.getConstraintViolations().forEach(violation -> {
+            errorMessage.append(violation);
             errorMessage.append("- ");
             errorMessage.append(violation.getMessage());
             errorMessage.append("\n");
@@ -233,6 +237,22 @@ public class UserController {
     }
 
 
+//this will work when we dont use binding results
+//    @ExceptionHandler(MethodArgumentNotValidException.class)
+//    public ResponseEntity<String> handleMethodArgumentNotValid(MethodArgumentNotValidException ex) {
+//        StringBuilder errorMessage = new StringBuilder();
+//        errorMessage.append("STATUS: 400 BAD REQUEST (SOME INPUTS ARE INVALID)\n");
+//        ex.getBindingResult().getAllErrors().forEach(error -> {
+//            errorMessage.append("- ");
+//            if (error instanceof FieldError) {
+//                FieldError fieldError = (FieldError) error;
+//                errorMessage.append(fieldError.getField()).append(": ");
+//            }
+//            errorMessage.append(error.getDefaultMessage());
+//            errorMessage.append("\n");
+//        });
+//        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorMessage.toString());
+//    }
 
     //this function is to check current authenticated user for testing purpose.
     @GetMapping("/checking")

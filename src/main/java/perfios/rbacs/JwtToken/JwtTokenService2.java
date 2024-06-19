@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import perfios.rbacs.Model.LoginResponse.LoginResponse2;
 import perfios.rbacs.RbacsApplication;
 import perfios.rbacs.Repository.UserRepository.UserService;
@@ -114,6 +115,7 @@ public class JwtTokenService2 {
 
         return claims;
     }
+
 
 
 }

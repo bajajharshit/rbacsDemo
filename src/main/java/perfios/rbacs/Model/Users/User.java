@@ -21,16 +21,16 @@ public class User {
     private String userFirstName;
 
     @NotBlank(message = "LastName cannot be blank")
-    @Size(max = 30, message = "LastName can't be nore than 30 letters")
+    @Size(max = 30, message = "LastName can't be more than 30 letters")
     private String userLastName;
 
     @NotBlank(message = "password cannot be blank")
-    @Size(min = 6, message = "password atleast 6 characters")
+    @Size(min = 6, message = "password must be atleast 6 characters")
     private String userPassword;
 
     @NotBlank(message = "Phone number can't be empty")
     @Pattern(regexp = "^\\d+$", message = "only digits are allowed in phone number")
-    @Size(min = 10, max = 10, message = "number should be of 10 digits")
+    @Size(min = 10, max = 10, message = "Phone number should be of 10 digits")
     private String userPhoneNumber;
 
     @NotBlank(message = "alternateUsername can't be empty")
@@ -42,7 +42,7 @@ public class User {
     @Email(message = "Email ID should be valid")
     private String userEmail;
 
-    @NotBlank
+    @NotBlank(message = "Select a valid Role")
     private String userRoleName;
     private List<String> userRoleNameList = new ArrayList<>();
 

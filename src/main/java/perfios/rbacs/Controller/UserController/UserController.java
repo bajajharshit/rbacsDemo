@@ -224,11 +224,10 @@ public class UserController {
 
     //this function catches all the validation errors based on validation done in respective models.
     @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<String> handleConstraintViolation(ConstraintViolationException ex, BindingResult bindingResult) {
+    public ResponseEntity<String> handleConstraintViolation(ConstraintViolationException ex) {
         StringBuilder errorMessage = new StringBuilder();
         errorMessage.append(" STATUS: 400 BAD REQUEST (SOME INPUTS ARE INVALID)\n");
         ex.getConstraintViolations().forEach(violation -> {
-            errorMessage.append(violation);
             errorMessage.append("- ");
             errorMessage.append(violation.getMessage());
             errorMessage.append("\n");

@@ -141,6 +141,8 @@ public class UserServiceImplementation implements UserService{
     }
 
 
+
+
     @Override
     public List<UserDashboard> dashboardFindUserByDifferentFeilds(UserSearch userSearch) {
         RbacsApplication.printString(userSearch.toString());
@@ -323,15 +325,12 @@ public class UserServiceImplementation implements UserService{
         params.put("limit",limit);
         params.put("offset",pageNo*limit);
         List<UserDashboard> userDashboardList = new ArrayList<>();
-        namedParameterJdbcTemplate.query(getUserDashboardPageQuery, params, new RowCallbackHandler() {
-            @Override
-            public void processRow(ResultSet rs) throws SQLException {
-                UserDashboard dashboardRow = new UserDashboard();
-                dashboardRow.setUserId(rs.getInt("user_id"));
-                dashboardRow.setUserEmail(rs.getString("user_email"));
-                dashboardRow.setRoleName(getRoleName(rs.getInt("role_id")).substring(5));
-                userDashboardList.add(dashboardRow);
-            }
+        namedParameterJdbcTemplate.query(getUserDashboardPageQuery, params, rs -> {
+            UserDashboard dashboardRow = new UserDashboard();
+            dashboardRow.setUserId(rs.getInt("user_id"));
+            dashboardRow.setUserEmail(rs.getString("user_email"));
+            dashboardRow.setRoleName(getRoleName(rs.getInt("role_id")).substring(5));
+            userDashboardList.add(dashboardRow);
         });
         return userDashboardList;
     }

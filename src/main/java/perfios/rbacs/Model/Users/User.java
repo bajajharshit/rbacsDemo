@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import org.springframework.beans.TypeMismatchException;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,11 +43,9 @@ public class User {
     @Email(message = "Email ID should be valid")
     private String userEmail;
 
-    @NotBlank(message = "Select a valid Role")
     private String userRoleName;
     private List<String> userRoleNameList = new ArrayList<>();
 
-    //    @NotBlank(message = "RoleId cannot be NULL")
     private int userRoleId;
 
     Boolean enabled;

@@ -134,20 +134,10 @@ public class UserController {
 
 
     //this methord receives a json of user model type and adds user into user_details table and user_to_role table correspondingly
-//    @PreAuthorize("hasRole('ROLE_ADMINISTRATOR')")
+    @PreAuthorize("hasRole('ROLE_ADMINISTRATOR')")
     @PostMapping("/user")
     public ResponseEntity<String> addNewUser(@Valid @RequestBody User user, BindingResult bindingResult) {
-//        if (bindingResult.hasErrors()) {
-//            StringBuilder errorMessage = new StringBuilder();
-//            errorMessage.append("Validation errors occurred:\n");
-//            for (ObjectError error : bindingResult.getAllErrors()) {
-//                errorMessage.append("- ");
-//                errorMessage.append(error.getDefaultMessage());
-//                errorMessage.append("\n");
-//            }
-//            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorMessage.toString());
-//        }
-
+//binding result is used to invoke exceptionHandler for constrainsViolationException for invalid parameters.
         String result = userService.addNewUser(user);
         return ResponseEntity.ok(result);
     }
@@ -206,16 +196,6 @@ public class UserController {
         String roleId = roleIdFromRoleName();
         Access access = redisDataService.getPermissionAccessFromRedis(roleId,permissionId);
         if(access.isCanEdit() == false) return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("YOU ARE UNAUTHORIZED TO PERFORM THIS OPERATION");
-//        if (bindingResult.hasErrors()) {
-//            StringBuilder errorMessage = new StringBuilder();
-//            errorMessage.append("400 BAD REQUEST\nThis request cannot be fulfilled due to validation errors:\n");
-//            for (ObjectError error : bindingResult.getAllErrors()) {
-//                errorMessage.append(error.getDefaultMessage());
-//                errorMessage.append(".\n");
-//            }
-//            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorMessage.toString());
-//        }
-
         String result = userService.updateUser(user, id);
         return ResponseEntity.ok(result);
     }
@@ -237,21 +217,21 @@ public class UserController {
 
 
 //this will work when we dont use binding results
-//    @ExceptionHandler(MethodArgumentNotValidException.class)
-//    public ResponseEntity<String> handleMethodArgumentNotValid(MethodArgumentNotValidException ex) {
-//        StringBuilder errorMessage = new StringBuilder();
-//        errorMessage.append("STATUS: 400 BAD REQUEST (SOME INPUTS ARE INVALID)\n");
-//        ex.getBindingResult().getAllErrors().forEach(error -> {
-//            errorMessage.append("- ");
-//            if (error instanceof FieldError) {
-//                FieldError fieldError = (FieldError) error;
-//                errorMessage.append(fieldError.getField()).append(": ");
-//            }
-//            errorMessage.append(error.getDefaultMessage());
-//            errorMessage.append("\n");
-//        });
-//        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorMessage.toString());
-//    }
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<String> handleMethodArgumentNotValid(MethodArgumentNotValidException ex) {
+        StringBuilder errorMessage = new StringBuilder();
+        errorMessage.append("STATUS: 400 BAD REQUEST (SOME INPUTS ARE INVALID)\n");
+        ex.getBindingResult().getAllErrors().forEach(error -> {
+            errorMessage.append("- ");
+            if (error instanceof FieldError) {
+                FieldError fieldError = (FieldError) error;
+                errorMessage.append(fieldError.getField()).append(": ");
+            }
+            errorMessage.append(error.getDefaultMessage());
+            errorMessage.append("\n");
+        });
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorMessage.toString());
+    }
 
     //this function is to check current authenticated user for testing purpose.
     @GetMapping("/checking")

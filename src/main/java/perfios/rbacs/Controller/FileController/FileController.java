@@ -1,4 +1,4 @@
-package perfios.rbacs.Controller;
+package perfios.rbacs.Controller.FileController;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.parameters.P;
@@ -25,26 +25,18 @@ public class FileController {
         return new ModelAndView("fileupload");
     }
 
-    @PostMapping("/uploadnewuser")
-    public List<String> uploadNewUser(@RequestParam("file")MultipartFile file){
-        if(file == null || file.isEmpty()) return new ArrayList<>();
-        return fileServices.addUserFromCSVFile(file);
-    }
 
     @GetMapping("/userdetails/excel")
     public String getUserDetailsExcel(){
         return fileServices.getUserDetailsExcelFile();
         }
 
-    @PostMapping("/file/upload-xlxs")
+    @PostMapping("/file/upload")
     public List<String> uploadNewUserXlxsFile(@RequestParam("file") MultipartFile file){
-        if(file == null || file.isEmpty()) return new ArrayList<>();
-        return fileServices.addUserFromXlxsFile(file);
-    }
-
-    @GetMapping("/file/upload/xlxs")
-    public ModelAndView uploadXlxsFile(){
-        return new ModelAndView ("fileUploadXlxs");
+        if(file == null || file.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return fileServices.addUsersFromUploadedFile(file);
     }
 
     @GetMapping("/download-users-based-on-search")

@@ -132,7 +132,7 @@ public class RoleController {
     }
 
     //this is to display role details (role_id, role_name, role_status)
-    @GetMapping("roles")
+    @GetMapping("/roles")
     public List<Role> getAllRoles(){
         return roleService.getAllRoles();
     }

@@ -140,18 +140,9 @@ public class UserServiceImplementation implements UserService{
         return roleId;
     }
 
-
-
-
-    @Override
-    public List<UserDashboard> dashboardFindUserByDifferentFeilds(UserSearch userSearch) {
-        RbacsApplication.printString(userSearch.toString());
+    public String appendConditions(UserSearch userSearch){
         Boolean fireQuery = false;
-        StringBuilder userSearchQuery = new StringBuilder("SELECT ud.user_id, ud.user_email," +
-                " ud.enabled," +
-                " utr.role_id" +
-                " FROM user_details ud" +
-                " JOIN user_to_role utr ON ud.user_id = utr.user_id WHERE ");
+        StringBuilder userSearchQuery = new StringBuilder();
         if (userSearch.getUserAlternateName() != null && userSearch.getUserAlternateName().isEmpty() == false) {
             if (fireQuery == false) {
                 userSearchQuery.append("ud.alternate_username LIKE '" + userSearch.getUserAlternateName() + "%' ");
@@ -206,6 +197,21 @@ public class UserServiceImplementation implements UserService{
 
 //        RbacsApplication.printString(fireQuery + userSearchQuery.toString());
         if (fireQuery == false) return null;
+        return userSearchQuery.toString();
+    }
+
+
+    @Override
+    public List<UserDashboard> dashboardFindUserByDifferentFeilds(UserSearch userSearch) {
+        RbacsApplication.printString(userSearch.toString());
+        StringBuilder userSearchQuery = new StringBuilder("SELECT ud.user_id, ud.user_email," +
+                " ud.enabled," +
+                " utr.role_id" +
+                " FROM user_details ud" +
+                " JOIN user_to_role utr ON ud.user_id = utr.user_id WHERE ");
+        String remainingQuery = appendConditions(userSearch);
+        if(remainingQuery == null) return null;
+        userSearchQuery.append(remainingQuery);
         List<UserDashboard> userDashboardList  = new ArrayList<>();
         try{
             Connection connection = dataSource.getConnection();
@@ -228,67 +234,15 @@ public class UserServiceImplementation implements UserService{
     @Override
     public List<User> findUserByDifferentFeilds(UserSearch userSearch) {
         RbacsApplication.printString(userSearch.toString());
-        Boolean fireQuery = false;
         StringBuilder userSearchQuery = new StringBuilder("SELECT ud.user_id, ud.user_first_name, ud.user_last_name, ud.user_email," +
                 " ud.user_password, ud.status, ud.user_phone_number, ud.enabled," +
                 " ud.is_super_admin, ud.should_loan_auto_apply, ud.alternate_username," +
                 " utr.role_id" +
                 " FROM user_details ud" +
                 " JOIN user_to_role utr ON ud.user_id = utr.user_id WHERE ");
-        if (userSearch.getUserAlternateName() != null && userSearch.getUserAlternateName().isEmpty() == false) {
-            if (fireQuery == false) {
-                userSearchQuery.append("ud.alternate_username LIKE '%" + userSearch.getUserAlternateName() + "%' ");
-                fireQuery = true;
-
-            } else {
-                userSearchQuery.append("AND ud.alternate_username LIKE '%" + userSearch.getUserAlternateName() + "%' ");
-            }
-        }
-        if (userSearch.getUserFirstName() != null && userSearch.getUserFirstName().isEmpty() == false) {
-            if (fireQuery == false) {
-                userSearchQuery.append("ud.user_first_name LIKE '%" + userSearch.getUserFirstName() + "%' ");
-                fireQuery = true;
-            } else {
-                userSearchQuery.append("AND ud.user_first_name LIKE '%" + userSearch.getUserFirstName() + "%' ");
-            }
-        }
-        if (userSearch.getUserLastName() != null && userSearch.getUserLastName().isEmpty() == false) {
-            if (fireQuery == false) {
-                userSearchQuery.append("ud.user_last_name LIKE '%" + userSearch.getUserLastName() + "%' ");
-                fireQuery = true;
-            } else {
-                userSearchQuery.append("AND ud.user_last_name LIKE '%" + userSearch.getUserLastName() + "%' ");
-            }
-        }if (userSearch.getUserEmailId() != null && userSearch.getUserEmailId().isEmpty() == false) {
-            if (fireQuery == false) {
-                userSearchQuery.append("ud.user_email LIKE '%" + userSearch.getUserEmailId() + "%' ");
-                fireQuery = true;
-            } else {
-                userSearchQuery.append("AND ud.user_email LIKE '%" + userSearch.getUserEmailId() + "%' ");
-            }
-        }
-        if (userSearch.getUserRoleName() != null && userSearch.getUserRoleName().isEmpty() == false) {
-            String roleIdInString = getRoleIdFromRole(userSearch.getUserRoleName());
-            if (roleIdInString == null || roleIdInString.isEmpty()) {
-                for (String key : getRoleIdFromRole.keySet()) {
-                    RbacsApplication.printString("key = " + key);
-                    if (key.contains(userSearch.getUserRoleName().toUpperCase())) {
-                        roleIdInString = getRoleIdFromRole.get(key);
-                        RbacsApplication.printString("role matched");
-                        break;
-                    }
-                }
-                if (roleIdInString != null && roleIdInString.isEmpty() == false) {
-                    if (fireQuery == false) {
-                        userSearchQuery.append(" utr.role_id = " + roleIdInString);
-                        fireQuery = true;
-                    } else userSearchQuery.append(" AND utr.role_id = " + roleIdInString);
-                }
-            }
-        }
-
-        RbacsApplication.printString(fireQuery + userSearchQuery.toString());
-        if (fireQuery == false) return null;
+        String remainingQuery = appendConditions(userSearch);
+        if(remainingQuery == null) return null;
+        userSearchQuery.append(remainingQuery);
         List<User> userList = new ArrayList<>();
         try{
             Connection connection = dataSource.getConnection();

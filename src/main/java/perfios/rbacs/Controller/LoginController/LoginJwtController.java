@@ -33,7 +33,7 @@ public class LoginJwtController {
 
 
     //if you want session less authentication and authorisation features, use loginjwt url
-    //instead of /login. a token id will sent as response in http header on verification of user.
+    //instead of /login. a token will sent as response in http header on verification of user.
 
 
 

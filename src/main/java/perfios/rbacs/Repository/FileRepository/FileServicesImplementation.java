@@ -28,22 +28,6 @@ public class FileServicesImplementation implements FileServices{
     NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
 
-    /*
-    {
-"userFirstName": "userSeven",
-"userLastName": "userSevenLastName",
-"userPassword": "userSevenPassword",
-"userPhoneNumber": "9889487778",
-"userStatus": "Active",
-"userEmail": "userseven@example.com",
-"userRoleId": 5,
-"enabled": true,
-"isSuperAdmin": false,
-"shouldLoanAutoApply": 0
-}
-
-     */
-
 
     @Autowired
     UserService userService;
@@ -63,6 +47,7 @@ public class FileServicesImplementation implements FileServices{
         headers.add("enabled");
         headers.add("isSuperAdmin");
         headers.add("shouldLoanAutoApply");
+        headers.add("alternateUsername");
 
         // Convert the list to a String array
         String[] headerArray = headers.toArray(new String[0]);
@@ -146,18 +131,7 @@ public class FileServicesImplementation implements FileServices{
 //User Status | User Email | User Role Name | User Role Id | Enabled | Is Super Admin | Should Loan Auto Apply |
 //create a map for user and then make a user object and sent it to servic layer.
 
-        /*
-        headers.add("userFirstName");
-        headers.add("userLastName");
-        headers.add("userPassword");
-        headers.add("userPhoneNumber");
-        headers.add("userStatus");
-        headers.add("userEmail");
-        headers.add("userRoleId");
-        headers.add("enabled");
-        headers.add("isSuperAdmin");
-        headers.add("shouldLoanAutoApply");
-         */
+
         List<String> verificationList = new ArrayList<>();
         Row headerRow = sheet.getRow(0);
         while (rowIterator.hasNext()){

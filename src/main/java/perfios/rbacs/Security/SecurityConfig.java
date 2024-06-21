@@ -51,8 +51,6 @@ public class SecurityConfig {
         return customAuthenticationProvider;
     }
 
-//    @Autowired
-//    private JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Autowired
     private AuthenticationFilterWithJwt authenticationFilterWithJwt;

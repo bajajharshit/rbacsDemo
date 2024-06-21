@@ -17,7 +17,6 @@ public class CustomAuthenticatorProvider2 implements AuthenticationProvider {
 
     @Override
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
-        RbacsApplication.printString("-inside custom authentication2 " + authentication.toString());
         String username = authentication.getName();
         String password = authentication.getCredentials().toString();
         UserDetails userDetails = userDetailsServiceImplementation.loadUserByUsername(username);

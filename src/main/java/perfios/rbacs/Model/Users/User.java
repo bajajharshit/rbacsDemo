@@ -18,11 +18,11 @@ public class User {
     private int userId;
 
     @NotBlank(message = "FirstName cannot be blank")
-    @Size(max = 50, message = "FirstName can't be more than 50 letters")
+    @Size(max = 20, message = "FirstName can't be more than 20 letters")
     private String userFirstName;
 
     @NotBlank(message = "LastName cannot be blank")
-    @Size(max = 30, message = "LastName can't be more than 30 letters")
+    @Size(max = 15, message = "LastName can't be more than 15 letters")
     private String userLastName;
 
     @NotBlank(message = "password cannot be blank")
@@ -35,7 +35,7 @@ public class User {
     private String userPhoneNumber;
 
     @NotBlank(message = "alternateUsername can't be empty")
-    @Size(min = 10, max = 30)
+    @Size(min = 4, max = 15)
     private String alternateUsername;
 
     private String userStatus;
@@ -82,6 +82,7 @@ public class User {
             setEnabled(Boolean.parseBoolean(individualUser.get("enabled")));
             setIsSuperAdmin(Boolean.parseBoolean(individualUser.get("isSuperAdmin")));
             setShouldLoanAutoApply(Boolean.parseBoolean(individualUser.get("shouldLoanAutoApply")));
+            setAlternateUsername(individualUser.get("alternateUsername"));
         } catch (NullPointerException | NumberFormatException | TypeMismatchException e) {
             return false;
         }

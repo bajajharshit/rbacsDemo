@@ -41,7 +41,7 @@ public class UserServiceImplementation implements UserService{
     private static final String deleteUserInUserToRoleQuery =  "delete from user_to_role where user_id = ?;";
     private static final String deleteUserRoleQuery = "delete from user_to_role where user_id = ? and role_id = ?";
     private static final String addNewRoleToExistingUserQuery = "insert into user_to_role(user_id,role_id) values (?,?)";
-    private static final String updateInUserDetailsQuery = "update user_details set status = ?, user_first_name = ?, user_last_name = ?, user_password = ?, user_phone_number = ? ,enabled = ?, is_super_admin = ?, should_loan_auto_apply = ? where user_id = ?;";
+    private static final String updateInUserDetailsQuery = "update user_details set status = ?, user_first_name = ?, user_last_name = ?, user_password = ?, user_phone_number = ? ,enabled = ?, is_super_admin = ?, should_loan_auto_apply = ? , alternate_username = ? where user_id = ?;";
     private static final String checkNumberOfRolesAssociatedWithUserQuery = "select count(*) from user_to_role where user_id = ?;";
     private static final String fetchRoleIdAndRoleNameQuery = "select role_id,role_name from role_details";
     private static final String getExistingUserDetailsQuery = "SELECT ud.user_id, ud.user_first_name, ud.user_last_name, ud.user_email, ud.user_password, ud.status, ud.user_phone_number, ud.enabled, ud.is_super_admin, ud.should_loan_auto_apply, ud.alternate_username, utr.role_id FROM user_details ud, user_to_role utr WHERE ud.user_id = utr.user_id AND ud.user_id = ?;";
@@ -569,7 +569,8 @@ public LoginResponse getUserLogin(){
             statement.setBoolean(6,user.getEnabled()); //enable
             statement.setBoolean(7, user.getIsSuperAdmin()); //supradmin
             statement.setBoolean(8,user.getShouldLoanAutoApply());
-            statement.setInt(9,id);
+            statement.setString(9,user.getAlternateUsername());
+            statement.setInt(10,id);
             int rowsAffected = statement.executeUpdate();
             if(rowsAffected == 0) return "updating user failed, invalid user_id in url";
             if(rowsAffected == 1) RbacsApplication.printString("user details table updated successfully");

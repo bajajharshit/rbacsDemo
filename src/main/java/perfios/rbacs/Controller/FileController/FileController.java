@@ -1,6 +1,8 @@
 package perfios.rbacs.Controller.FileController;
 
+import org.apache.poi.ss.formula.functions.T;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.parameters.P;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -32,11 +34,11 @@ public class FileController {
         }
 
     @PostMapping("/file/upload")
-    public List<String> uploadNewUserXlxsFile(@RequestParam("file") MultipartFile file){
+    public ResponseEntity uploadNewUserXlxsFile(@RequestParam("file") MultipartFile file){
         if(file == null || file.isEmpty()) {
-            return new ArrayList<>();
+            return ResponseEntity.unprocessableEntity().body("File did not uploaded. please Re-upload!");
         }
-        return fileServices.addUsersFromUploadedFile(file);
+        return ResponseEntity.ok(fileServices.addUsersFromUploadedFile(file));
     }
 
     @GetMapping("/download-users-based-on-search")

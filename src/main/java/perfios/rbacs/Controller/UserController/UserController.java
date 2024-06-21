@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageConversionException;
 import org.springframework.security.access.annotation.Secured;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -134,9 +135,9 @@ public class UserController {
 
 
     //this methord receives a json of user model type and adds user into user_details table and user_to_role table correspondingly
-    @PreAuthorize("hasRole('ROLE_ADMINISTRATOR')")
+//    @PreAuthorize("hasRole('ROLE_ADMINISTRATOR')")
     @PostMapping("/user")
-    public ResponseEntity<String> addNewUser(@Valid @RequestBody User user, BindingResult bindingResult) {
+    public ResponseEntity<String> addNewUser(@Valid @RequestBody User user, BindingResult bindingResult) throws HttpMessageConversionException {
 //binding result is used to invoke exceptionHandler for constrainsViolationException for invalid parameters.
         String result = userService.addNewUser(user);
         return ResponseEntity.ok(result);
@@ -188,14 +189,14 @@ public class UserController {
 
 
     //this methord is for updating a user details
-    @PreAuthorize("hasRole('ROLE_ADMINISTRATOR')")
+//    @PreAuthorize("hasRole('ROLE_ADMINISTRATOR')")
     @PutMapping("user/{id}")
     public ResponseEntity<String> updateUser(@PathVariable int id, @Valid @RequestBody User user, BindingResult bindingResult) {
-        String permissionType = "user_details";
-        String permissionId = redisDataService.getPermissionId(permissionType);
-        String roleId = roleIdFromRoleName();
-        Access access = redisDataService.getPermissionAccessFromRedis(roleId,permissionId);
-        if(access.isCanEdit() == false) return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("YOU ARE UNAUTHORIZED TO PERFORM THIS OPERATION");
+//        String permissionType = "user_details";
+//        String permissionId = redisDataService.getPermissionId(permissionType);
+//        String roleId = roleIdFromRoleName();
+//        Access access = redisDataService.getPermissionAccessFromRedis(roleId,permissionId);
+//        if(access == null || access.isCanEdit() == false) return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("YOU ARE UNAUTHORIZED TO PERFORM THIS OPERATION");
         String result = userService.updateUser(user, id);
         return ResponseEntity.ok(result);
     }
@@ -216,7 +217,24 @@ public class UserController {
     }
 
 
-//this will work when we dont use binding results
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<String> handleIllegalArgumentException(IllegalArgumentException ex) {
+        StringBuilder errorMessage = new StringBuilder();
+        errorMessage.append(" STATUS: 400 BAD REQUEST (INVALID ARGUMENT)\n");
+        errorMessage.append("- ");
+        errorMessage.append(ex.getMessage());
+        errorMessage.append("\n");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorMessage.toString());
+    }
+
+
+    @ExceptionHandler(HttpMessageConversionException.class)
+    public ResponseEntity<String> handleHttpMessageConversionException(HttpMessageConversionException ex) {
+        return ResponseEntity.badRequest().body("INVALID DATA ENTERED, TRY AGAIN WITH CORRECT DATA");
+    }
+
+
+    //this will work when we dont use binding results
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<String> handleMethodArgumentNotValid(MethodArgumentNotValidException ex) {
         StringBuilder errorMessage = new StringBuilder();

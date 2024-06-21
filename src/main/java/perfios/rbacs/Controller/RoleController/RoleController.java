@@ -1,5 +1,8 @@
 package perfios.rbacs.Controller.RoleController;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import perfios.rbacs.Model.Permission.Permission;
@@ -25,7 +28,7 @@ public class RoleController {
     @Autowired
     private RedisDataService redisDataService;
 
-
+//TO ADD NEW PERMISSION TO AN EXISTING ROLE
     @PostMapping("/newpermission")
     public String addNewPermissionTypeToExistingRole(@RequestBody RoleToPermissionType newPermission) throws SQLException {
 
@@ -44,6 +47,7 @@ public class RoleController {
 
     }
 
+    //TO DELETE AN EXISTING PERMISSION TO A ROLE
     @DeleteMapping("/deletepermission/{permission_name}/forrole/{role_id}")
     public String deletePermissionForRole(@PathVariable String permission_name, @PathVariable int role_id){
         Boolean check = roleService.unassignPermissionToExistingRole(role_id,permission_name);
@@ -62,16 +66,17 @@ public class RoleController {
 
 
 
-
+//TO GET LIST OF ALL PERMISSION, CAN VIEW, CAN EDIT FOR A PARTICUALR ROLE
 //    @PreAuthorize("hasRole('ROLE_ADMINISTRATOR')")
     @GetMapping("/permission-type-access/{roleId}")
     public List<RoleToPermissionType> getAllPermissionAccessForRole(@PathVariable String roleId){
         return roleService.getAllPermissionTypeAccessForParticularRole(roleId);
     }
 
+    //TO CHANGE VIEW ACCESS FOR A PERMISSION TO A PARTICULAR ROLE
 //    @PreAuthorize("hasRole('ROLE_ADMINISTRATOR')")
     @PutMapping("permission/{permissionName}/role/{roleId}/view/{canView}")
-    public String updateViewAccessForPermissionType(@PathVariable String permissionName, @PathVariable int roleId, @PathVariable Boolean canView){
+    public String updateViewAccessForPermissionType(@PathVariable String permissionName, @PathVariable int roleId, @PathVariable Boolean canView) throws IllegalArgumentException{
         String pId = redisDataService.getPermissionId(permissionName);
         if(pId == null) return "Invalid permission passed !!! " ;
         int permissionId = Integer.valueOf(pId);
@@ -85,6 +90,7 @@ public class RoleController {
         return "Failed to Update";
     }
 
+    //TO CHANGE EDIT ACCESS FOR A PARTICULAR PERMISSION FOR A PARTICUALR ROLE
 //    @PreAuthorize("hasRole('ROLE_ADMINISTRATOR')")
     @PutMapping("permission/{permissionName}/role/{roleId}/edit/{canEdit}")
     public String updateEditAccessForPermissionType(@PathVariable String permissionName, @PathVariable int roleId, @PathVariable Boolean canEdit){
@@ -172,5 +178,17 @@ public class RoleController {
 
 
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<String> handleIllegalArgumentException(IllegalArgumentException ex) {
+        StringBuilder errorMessage = new StringBuilder();
+        errorMessage.append(" STATUS: 400 BAD REQUEST (INVALID ARGUMENT)\n");
+        errorMessage.append("- ");
+        errorMessage.append(ex.getMessage());
+        errorMessage.append("\n");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorMessage.toString());
+    }
+
+
 
 }
+

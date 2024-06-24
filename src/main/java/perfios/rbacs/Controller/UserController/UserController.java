@@ -175,9 +175,11 @@ public class UserController {
         String permissionType = "user_details";
         String permissionId = redisDataService.getPermissionId(permissionType);
         String roleId = roleIdFromRoleName();
-        Access access = redisDataService.getPermissionAccessFromRedis(roleId,permissionId);
-        if(access.isCanView() == false) return ResponseEntity.unprocessableEntity().body("403 FORBIDDEN : YOU ARE NOT AUTHORISED TO VIEW THIS");
-        if(roleId.equals('1') == false) {
+        Access access = redisDataService.getPermissionAccessFromRedis(roleId,permissionId);{
+            RbacsApplication.printString(access.toString() + access.isCanView() + (access.isCanView() == false));
+        }
+        if(!access.isCanView()) return ResponseEntity.unprocessableEntity().body("403 FORBIDDEN : YOU ARE NOT AUTHORISED TO VIEW THIS");
+        if(!roleId.equals("1")) {
             String jwt = request.getHeader("Authorization").substring(7);
             int userIdFromRequest = jwtTokenService.extractUserIdFromJwt(jwt);
             if(userIdFromRequest != userId) return ResponseEntity.unprocessableEntity().body("403 FORBIDDEN : YOU ARE NOT AUTHORISED TO VIEW THIS");
@@ -189,14 +191,14 @@ public class UserController {
 
 
     //this methord is for updating a user details
-//    @PreAuthorize("hasRole('ROLE_ADMINISTRATOR')")
+    @PreAuthorize("hasRole('ROLE_ADMINISTRATOR')")
     @PutMapping("user/{id}")
     public ResponseEntity<String> updateUser(@PathVariable int id, @Valid @RequestBody User user, BindingResult bindingResult) {
-//        String permissionType = "user_details";
-//        String permissionId = redisDataService.getPermissionId(permissionType);
-//        String roleId = roleIdFromRoleName();
-//        Access access = redisDataService.getPermissionAccessFromRedis(roleId,permissionId);
-//        if(access == null || access.isCanEdit() == false) return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("YOU ARE UNAUTHORIZED TO PERFORM THIS OPERATION");
+        String permissionType = "user_details";
+        String permissionId = redisDataService.getPermissionId(permissionType);
+        String roleId = roleIdFromRoleName();
+        Access access = redisDataService.getPermissionAccessFromRedis(roleId,permissionId);
+        if(access == null || access.isCanEdit() == false) return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("YOU ARE UNAUTHORIZED TO PERFORM THIS OPERATION");
         String result = userService.updateUser(user, id);
         return ResponseEntity.ok(result);
     }
@@ -259,6 +261,5 @@ public class UserController {
         RbacsApplication.printString(String.valueOf(userService.getVerifiedUserId()));
     }
 
-
-
+    
 }

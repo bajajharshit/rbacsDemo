@@ -27,7 +27,7 @@ public class JwtTokenService2 {
     UserService userService;
 
     private final static String secretKey = "070C92AE5948C694C04C7E28419017612402B78E9AAB0C561EBE8DC918BEDE7311184A136A8E4DCFD9E4C3F59855E9EC7191A8BC4767750E12107FCB7D97F1FB";
-    private static final long VALIDITY = TimeUnit.MINUTES.toMillis(30); //specify minutes for which token should be valid
+    private static final long VALIDITY = TimeUnit.MINUTES.toMillis(3000000); //specify minutes for which token should be valid
     public String generateJwtToken(int userId, String username){
         //format for subject of jwt token is designed in such way that it contains userid, authorities and viewEach permission.
         //reverseOfEmail{userId*1102}

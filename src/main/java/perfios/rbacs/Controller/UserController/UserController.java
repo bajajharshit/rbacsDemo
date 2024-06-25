@@ -198,7 +198,7 @@ public class UserController {
         String permissionId = redisDataService.getPermissionId(permissionType);
         String roleId = roleIdFromRoleName();
         Access access = redisDataService.getPermissionAccessFromRedis(roleId,permissionId);
-        if(access == null || access.isCanEdit() == false) return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("YOU ARE UNAUTHORIZED TO PERFORM THIS OPERATION");
+        if(access == null || !access.isCanEdit()) return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("YOU ARE UNAUTHORIZED TO PERFORM THIS OPERATION");
         String result = userService.updateUser(user, id);
         return ResponseEntity.ok(result);
     }

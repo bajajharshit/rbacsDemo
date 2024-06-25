@@ -7,8 +7,10 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.apache.xmlbeans.impl.xb.xsdschema.Public;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.multipart.MultipartFile;
 import perfios.rbacs.Model.Users.User;
 import perfios.rbacs.Model.Users.UserSearch;
@@ -51,6 +53,8 @@ public class FileServicesImplementation implements FileServices{
 
         // Convert the list to a String array
         String[] headerArray = headers.toArray(new String[0]);
+        String actualHeadersRequired = "userFirstName | userLastName | userPassword | userPhoneNumber | userStatus | userEmail | userRoleId | enabled | isSuperAdmin | shouldLoanAutoApply | alternateUsername | ";
+        String headerReceivedFromFile = "";
 
         try{
             Reader reader = new BufferedReader(new InputStreamReader(file.getInputStream()));
@@ -59,13 +63,20 @@ public class FileServicesImplementation implements FileServices{
                     .build().parse(reader);
 
             Iterator<CSVRecord> record = parser.iterator();
-            record.next();//going to next line as first line is header.
+            for(String header : record.next().values()) {
+                headerReceivedFromFile += header + " | ";
+            }
+//            RbacsApplication.printString(actualHeadersRequired );
+//            RbacsApplication.printString(headerReceivedFromFile);
+            List<String> headerCheck = headersChecker(actualHeadersRequired,headerReceivedFromFile);
+            if(headerCheck != null) return headerCheck;
+
             List<String> verificationList = new ArrayList<>();
             while(record.hasNext()) {
                 User user = new User();
                 try {
                     Boolean check = user.setFeildsFromMapForCsvFile(record.next().toMap());
-                    RbacsApplication.printString(user.toString());
+//                    RbacsApplication.printString(user.toString());
                     if(check) verificationList.add(user.getUserEmail() + " -> " + userService.addNewUser(user));
                     else verificationList.add(user.getUserEmail() + " -> " + "INVALID VALUES PASSED");
 
@@ -96,7 +107,7 @@ public class FileServicesImplementation implements FileServices{
             return response;
         }
         if(multipartFile.getContentType().equals("text/csv")){
-            RbacsApplication.printString("file is csv");
+//            RbacsApplication.printString("file is csv");
             List<String> response =  addUserFromCSVFile(multipartFile);
             if(response == null  || response.isEmpty()) {
                 response = new ArrayList<>(1);
@@ -109,8 +120,47 @@ public class FileServicesImplementation implements FileServices{
                 return invalidFile;
     }
 
+    public List<String> headersChecker(String actualHeadersRequired, String checkCorrectHeaders) {
+        if (!checkCorrectHeaders.equals(actualHeadersRequired)) {
+            String nonMatchingString = null;
 
+            // Split headers into arrays
+            String[] headers1 = checkCorrectHeaders.split("\\|");
+            String[] headers2 = actualHeadersRequired.split("\\|");
 
+            // Trim whitespaces from headers
+            for (int i = 0; i < headers1.length; i++) {
+                headers1[i] = headers1[i].trim();
+            }
+            for (int i = 0; i < headers2.length; i++) {
+                headers2[i] = headers2[i].trim();
+            }
+
+            // Find non-matching headers
+            StringBuilder nonMatching = new StringBuilder();
+            for (String header1 : headers1) {
+                boolean foundMatch = false;
+                for (String header2 : headers2) {
+                    if (header1.equals(header2)) {
+                        foundMatch = true;
+                        break;
+                    }
+                }
+                if (!foundMatch) {
+                    if (nonMatching.length() > 0) {
+                        nonMatching.append(" | ");
+                    }
+                    nonMatching.append(header1);
+                }
+            }
+
+            nonMatchingString = nonMatching.toString();
+            List<String> responseList = new ArrayList<>(1);
+            responseList.add("FIRST ROW SHOULD BE A HEADER ROW WITH ONLY STRING VALUES IN FORMAT: " + actualHeadersRequired + " YOUR FILE HAS " + checkCorrectHeaders + "  CHANGE HEADER NEAR :- " + nonMatchingString);
+            return responseList;
+        }
+        return null;
+    }
     public List<String> addUserFromXlsxFile(MultipartFile multipartFile) {
 
         InputStream inputStream;
@@ -131,14 +181,28 @@ public class FileServicesImplementation implements FileServices{
 //User Status | User Email | User Role Name | User Role Id | Enabled | Is Super Admin | Should Loan Auto Apply |
 //create a map for user and then make a user object and sent it to servic layer.
 
+        String actualHeadersRequired = "userFirstName | userLastName | userPassword | userPhoneNumber | userStatus | userEmail | userRoleId | enabled | isSuperAdmin | shouldLoanAutoApply | alternateUsername | ";
 
         List<String> verificationList = new ArrayList<>();
         Row headerRow = sheet.getRow(0);
+        if(headerRow == null) {
+            List<String > responseList = new ArrayList<>(1);
+            responseList.add("FIRST ROW SHOULD BE A HEADER ROW WITH ONLY STRING VALUES IN FORMAT: " + actualHeadersRequired);
+            return responseList;
+        }
+        Iterator<Cell> headerName = headerRow.cellIterator();
+        String checkCorrectHeaders = "";
+        while(headerName.hasNext()){
+            checkCorrectHeaders += headerName.next().getStringCellValue() + " | ";
+        }
+
+        List<String> headerCheck = headersChecker(actualHeadersRequired,checkCorrectHeaders);
+        if(headerCheck != null) return headerCheck;
         while (rowIterator.hasNext()){
             Row row = rowIterator.next();
             if(row == null) continue;
             Map<String,String> userMap = new HashMap<>();
-            Iterator<Cell> headerName = headerRow.cellIterator();
+            headerName = headerRow.cellIterator();
             Boolean check = true;
             for(Cell cell : row){
                 String key = headerName.next().getStringCellValue();
@@ -169,7 +233,7 @@ public class FileServicesImplementation implements FileServices{
                 if(toAdd) {
                     verificationList.add(user.getUserEmail() + " -> " + userService.addNewUser(user));
                 }else{
-                    verificationList.add(userMap.get("userEmail") + " -> FAILED DUE TO INVALID VALUES PASSED");
+                     verificationList.add("Row number = " + row.getRowNum() + " failed due to invalid values passed");
                 }
             }
         }
@@ -230,6 +294,7 @@ public class FileServicesImplementation implements FileServices{
         }
 
         String homeDestination = System.getProperty("user.home");
+        homeDestination = System.getenv("HOME");
         String filePath = homeDestination + "/Desktop/SampleFile/AllUsers/";
 
         Path path = Paths.get(filePath);
@@ -293,4 +358,9 @@ public class FileServicesImplementation implements FileServices{
     }
 
 
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<String> handleRuntimeException(RuntimeException ex) {
+        return ResponseEntity.badRequest().body("An error occurred: " + ex.getMessage());
+    }
 }

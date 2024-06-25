@@ -28,7 +28,7 @@ public class FileController {
     }
 
 
-    @GetMapping("/userdetails/excel")
+    @GetMapping("/all-users-download")
     public String getUserDetailsExcel(){
         return fileServices.getUserDetailsExcelFile();
         }

@@ -38,6 +38,7 @@ public class User {
     @Size(min = 4, max = 15)
     private String alternateUsername;
 
+    @NotBlank(message = "Select a valid status")
     private String userStatus;
 
     @Email(message = "Email ID should be valid")
@@ -46,6 +47,7 @@ public class User {
     private String userRoleName;
     private List<String> userRoleNameList = new ArrayList<>();
 
+    @NotBlank(message = "select a valid role")
     private int userRoleId;
 
     Boolean enabled;

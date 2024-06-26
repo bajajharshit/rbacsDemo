@@ -338,6 +338,21 @@ public class FileServicesImplementation implements FileServices{
         return downloadUsersInXlsxFile(userService.findUserByDifferentFeilds(userSearch));
     }
 
+
+
+    @Override
+    public byte[] getUserDetailsExcelFileInOtherSystem() throws IOException {
+        // Create workbook and generate Excel file
+//        Workbook workbook = createWorkbookWithData(); // Method to create your workbook with data
+//        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+//        workbook.write(outputStream);
+//        workbook.close();
+
+//        return outputStream.toByteArray();
+
+        return null;
+    }
+
     public static Map<Integer,Object> fillUserMap(User user){
         int cc = 0;
         Map<Integer, Object> userMap = new HashMap<>();

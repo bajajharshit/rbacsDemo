@@ -48,12 +48,7 @@ public class DataInitializer {
         for(Permission permission : permissionType){
             redisDataService.savePermissionTypeToRedis(permission.getPermissionType(), String.valueOf(permission.getPermissionId()));
         }
-
-        RbacsApplication.printString("permission type = -------");
-        RbacsApplication.printString(permissionType.toString());
-
-        RbacsApplication.printString(allPermissionAccess.toString());
-        RbacsApplication.printString("--------------");
+        RbacsApplication.printString("-------------Redis server is Running successfully---------");
         userService.printRoleDetails();
     }
 

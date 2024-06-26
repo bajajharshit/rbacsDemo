@@ -92,17 +92,17 @@ public class UserServiceImplementation implements UserService{
 
     @Override
     public void printRoleDetails(){
-        RbacsApplication.printString("ROLE DETAILS = ");
-        RbacsApplication.printString(roleDetails.toString());
-        RbacsApplication.printString("ROle IDs");
-        RbacsApplication.printString(getRoleIdFromRole.toString());
+//        RbacsApplication.printString("ROLE DETAILS = ");
+//        RbacsApplication.printString(roleDetails.toString());
+//        RbacsApplication.printString("ROle IDs");
+//        RbacsApplication.printString(getRoleIdFromRole.toString());
     }
 
 
 
     @Override
     public String getRoleName(int roleId){
-        RbacsApplication.printString("here and roleId = " + roleId);
+//        RbacsApplication.printString("here and roleId = " + roleId);
         String role = roleDetails.get(roleId);
         if(role == null) return null;
         String roleName = "ROLE_" + role.toUpperCase();
@@ -213,7 +213,7 @@ public class UserServiceImplementation implements UserService{
 
     @Override
     public List<UserDashboard> dashboardFindUserByDifferentFeilds(UserSearch userSearch) {
-        RbacsApplication.printString(userSearch.toString());
+//        RbacsApplication.printString(userSearch.toString());
         StringBuilder userSearchQuery = new StringBuilder("SELECT ud.user_id, ud.user_email," +
                 " ud.enabled," +
                 " utr.role_id" +
@@ -243,7 +243,7 @@ public class UserServiceImplementation implements UserService{
 
     @Override
     public List<User> findUserByDifferentFeilds(UserSearch userSearch) {
-        RbacsApplication.printString(userSearch.toString());
+//        RbacsApplication.printString(userSearch.toString());
         StringBuilder userSearchQuery = new StringBuilder("SELECT ud.user_id, ud.user_first_name, ud.user_last_name, ud.user_email," +
                 " ud.user_password, ud.status, ud.user_phone_number, ud.enabled," +
                 " ud.is_super_admin, ud.should_loan_auto_apply, ud.alternate_username," +
@@ -312,7 +312,7 @@ public class UserServiceImplementation implements UserService{
             LoginPostOb loginPostOb = new LoginPostOb();
             loginPostOb.setUserEmail(validator.getString("user_email"));
             loginPostOb.setUserPassword(validator.getString("user_password"));
-            RbacsApplication.printString("loginpost from jwt is " + loginPostOb.toString());
+//            RbacsApplication.printString("loginpost from jwt is " + loginPostOb.toString());
             return loginPostOb;
         }catch (SQLException e){
             System.err.println(e.getMessage());
@@ -363,10 +363,10 @@ public class UserServiceImplementation implements UserService{
             statement.setString(1,emailId);
             ResultSet loadedUser = statement.executeQuery();
             if(!loadedUser.next()) return null;
-            RbacsApplication.printString("here this point 1");
+//            RbacsApplication.printString("here this point 1");
             if(loadedUser.getBoolean("enabled") == false) return null;
             int userId = loadedUser.getInt("user_id");
-            RbacsApplication.printString("user id = " + userId);
+//            RbacsApplication.printString("user id = " + userId);
             int userRoleId = -1;
             try{
                 PreparedStatement statement1 = connection.prepareStatement(getAllRolesIdAssociatedWithUserQuery);
@@ -408,7 +408,7 @@ public class UserServiceImplementation implements UserService{
             statement.setString(1,emailId);
             ResultSet resultSet = statement.executeQuery();
             if(!resultSet.next()) {
-                RbacsApplication.printString("result set found empty");
+//                RbacsApplication.printString("result set found empty");
                 return null;
             }
             if(resultSet.getBoolean("enabled") == false) {
@@ -430,14 +430,14 @@ public class UserServiceImplementation implements UserService{
                     permissionIds.add(String.valueOf(resultSet1.getInt("permission_id")));
                 }while(resultSet1.next());
                 loginResponseObjet.setUserPermissionId(permissionIds);
-                RbacsApplication.printUserLogin(loginResponseObjet);
+//                RbacsApplication.printUserLogin(loginResponseObjet);
                 sessionPermissions.clear();
                 for(String temp : loginResponseObjet.getUserPermissionId()) sessionPermissions.add(Integer.valueOf(temp));
-                RbacsApplication.printString("session user id = " + sessionUserId + " session role id = " + sessionRoleId + "session permissions = ");
-                RbacsApplication.printSet(sessionPermissions);
+//                RbacsApplication.printString("session user id = " + sessionUserId + " session role id = " + sessionRoleId + "session permissions = ");
+//                RbacsApplication.printSet(sessionPermissions);
                 loginResponse = loginResponseObjet;
                 connection.close();
-                RbacsApplication.printString("this from userServiceimplentation not from session service");
+//                RbacsApplication.printString("this from userServiceimplentation not from session service");
                 return loginResponseObjet;
             }catch (SQLException e){
                 e.printStackTrace();
@@ -631,8 +631,8 @@ public LoginResponse getUserLogin(){
             existingUser.setIsSuperAdmin(existingUserFetched.getBoolean("is_super_admin"));
             existingUser.setShouldLoanAutoApply(existingUserFetched.getBoolean("should_loan_auto_apply"));
             existingUser.setAlternateUsername(existingUserFetched.getString("alternate_username"));
-            RbacsApplication.printString("user after fetching from user_details;");
-            RbacsApplication.check2(existingUser);
+//            RbacsApplication.printString("user after fetching from user_details;");
+//            RbacsApplication.check2(existingUser);
              //got everything except role array.
             HashMap<Integer,String > roleDetails = new HashMap<>();
             PreparedStatement roleTableStatement = connection.prepareStatement(fetchRoleIdAndRoleNameQuery);

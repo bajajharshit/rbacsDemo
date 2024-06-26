@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageConversionException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
@@ -57,24 +58,30 @@ public class LoginSessionController {
 
 
     @PostMapping(value = "/login")
-    public ResponseEntity<?> loginCheck(HttpServletRequest request, HttpServletResponse response, @ModelAttribute("loginPostOb") LoginPostOb loginPostOb){
-        RbacsApplication.printString("post /login hit on pressing button");
+    public ResponseEntity<?> loginCheck(HttpServletRequest request, HttpServletResponse response, @RequestBody LoginPostOb loginPostOb){
+//        RbacsApplication.printString("post /login hit on pressing button");
         String userEmail = loginPostOb.getUserEmail();
         String userPassword = loginPostOb.getUserPassword();
-        RbacsApplication.printString("api hit and " + userEmail);
+//        RbacsApplication.printString("api hit and " + userEmail);
         boolean areParamValid = true;
         StringBuilder validationErrors = new StringBuilder();
         validationErrors.append("STATUS : 400 BAD REQUEST(INVALID CREDENTIALS)\n");
         String emailPatternMatcherExpression = "^[\\w.-]+@[a-zA-Z_-]+?\\.[a-zA-Z]{2,3}$";
-        if(userPassword.length()<8 || userPassword.length()>20) {
+        if(userPassword == null || userPassword.isEmpty() || userPassword.isBlank()){
+            validationErrors.append("Password should be between 8 to 20 characters\n");
+            areParamValid = false;
+        }else if( userPassword.length()<8 || userPassword.length()>20) {
             validationErrors.append("Password should be between 8 to 20 characters\n");
             areParamValid = false;
         }
-        if(!userEmail.matches(emailPatternMatcherExpression) ) {
+        if(userEmail == null || userEmail.isBlank() || userEmail.isEmpty()){
+            validationErrors.append("Email ID should be of form user@example.com");
+            areParamValid = false;
+        }else if (!userEmail.matches(emailPatternMatcherExpression)) {
             validationErrors.append("Email ID should be of form user@example.com");
             areParamValid = false;
         }
-        if(areParamValid == false) RbacsApplication.printString("parameter valid found");
+        if(areParamValid == false) RbacsApplication.printString("parameter invalid found");
         if(!areParamValid) return ResponseEntity.badRequest().body(validationErrors);
         UsernamePasswordAuthenticationToken authenticationToken =
                 new UsernamePasswordAuthenticationToken(userEmail, userPassword);
@@ -89,40 +96,41 @@ public class LoginSessionController {
         securityContextRepository.saveContext(context, request, response);
 
         HttpSession session = request.getSession();
-        RbacsApplication.printString(session.getId());
+//        RbacsApplication.printString(session.getId());
 
         HttpHeaders httpHeaders = new HttpHeaders();
         httpHeaders.add("Content-type","JSON");
 
-//        LoginResponse loginResponse = userService.getUserLogin();
-
         session.setAttribute("role",authentication.getAuthorities().toString());
+        session.setAttribute("id",userService.getVerifiedUserId());
+        userService.resetVerifiedUserId();
+//        RbacsApplication.printString(authentication.toString());
+//        RbacsApplication.printString("--->" +SecurityContextHolder.getContext().getAuthentication().toString());
 
-//        if(loginResponse.getUserPermissionId().contains("7")) session.setAttribute("viewAll",true);
-
-//        RbacsApplication.printString(loginResponse.toString());
-        RbacsApplication.printString(authentication.toString());
-        RbacsApplication.printString("--->" +SecurityContextHolder.getContext().getAuthentication().toString());
-
-//        return ResponseEntity.ok(loginResponse);
-return ResponseEntity.ok(authentication.getAuthorities());
+        return ResponseEntity.ok(authentication.getAuthorities());
     }
 
-    @PostMapping(value = "/loginpostman")
-    public ResponseEntity<?> loginCheckPostman(@RequestBody LoginPostOb loginPostOb,HttpServletRequest request, HttpServletResponse response){
-        RbacsApplication.printString("post /login hit on pressing button");
+    @PostMapping(value = "/loginthym")
+    public ResponseEntity<?> loginCheckPostman(@ModelAttribute("loginPostOb") LoginPostOb loginPostOb,HttpServletRequest request, HttpServletResponse response){
+//        RbacsApplication.printString("post /login thymleaf hit hit on pressing button");
         String userEmail = loginPostOb.getUserEmail();
         String userPassword = loginPostOb.getUserPassword();
-        RbacsApplication.printString("api hit and " + userEmail);
+//        RbacsApplication.printString("api hit and " + userEmail);
         boolean areParamValid = true;
         StringBuilder validationErrors = new StringBuilder();
         validationErrors.append("STATUS : 400 BAD REQUEST(INVALID CREDENTIALS)\n");
-        String regexExpression = "^[\\w.-]+@[a-zA-Z_-]+?\\.[a-zA-Z]{2,3}$";
-        if(userPassword.length()<6 || userPassword.length()>20) {
-            validationErrors.append("Password should be between 6 to 20 characters\n");
+        String emailPatternMatcherExpression = "^[\\w.-]+@[a-zA-Z_-]+?\\.[a-zA-Z]{2,3}$";
+        if(userPassword == null || userPassword.isEmpty() || userPassword.isBlank()){
+            validationErrors.append("Password should be between 8 to 20 characters\n");
+            areParamValid = false;
+        }else if( userPassword.length()<8 || userPassword.length()>20) {
+            validationErrors.append("Password should be between 8 to 20 characters\n");
             areParamValid = false;
         }
-        if(!userEmail.matches(regexExpression) ) {
+        if(userEmail == null || userEmail.isBlank() || userEmail.isEmpty()){
+            validationErrors.append("Email ID should be of form user@example.com");
+            areParamValid = false;
+        }else if (!userEmail.matches(emailPatternMatcherExpression)) {
             validationErrors.append("Email ID should be of form user@example.com");
             areParamValid = false;
         }
@@ -133,24 +141,27 @@ return ResponseEntity.ok(authentication.getAuthorities());
 
         Authentication authentication = customAuthenticatorProvider.authenticate(authenticationToken);
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
         if(authentication == null) return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body("Bad credentials");
+
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);
         securityContextRepository.saveContext(context, request, response);
+
         HttpSession session = request.getSession();
-        RbacsApplication.printString(session.getId());
+//        RbacsApplication.printString(session.getId());
 
         HttpHeaders httpHeaders = new HttpHeaders();
         httpHeaders.add("Content-type","JSON");
-        LoginResponse loginResponse = userService.getUserLogin();
-        session.setAttribute("id",loginResponse.getUserId());
-        if(loginResponse.getUserPermissionId().contains("7")) session.setAttribute("viewAll",true);
-        RbacsApplication.printString(loginResponse.toString());
-        RbacsApplication.printString(authentication.toString());
-        RbacsApplication.printString("--->" +SecurityContextHolder.getContext().getAuthentication().toString());
-        return ResponseEntity.ok(loginResponse);
+
+        session.setAttribute("role",authentication.getAuthorities().toString());
+        session.setAttribute("id",userService.getVerifiedUserId());
+        userService.resetVerifiedUserId();
+
+//        RbacsApplication.printString(authentication.toString());
+//        RbacsApplication.printString("--->" +SecurityContextHolder.getContext().getAuthentication().toString());
+
+        return ResponseEntity.ok(authentication.getAuthorities());
 
     }
 
@@ -189,5 +200,10 @@ return ResponseEntity.ok(authentication.getAuthorities());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorMessage.toString());
     }
 
+
+    @ExceptionHandler(HttpMessageConversionException.class)
+    public ResponseEntity<String> handleHttpMessageConversionException(HttpMessageConversionException ex) {
+        return ResponseEntity.badRequest().body("INVALID DATA ENTERED, TRY AGAIN WITH CORRECT DATA");
+    }
 
 }

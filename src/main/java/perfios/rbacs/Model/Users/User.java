@@ -1,9 +1,6 @@
 package perfios.rbacs.Model.Users;
 
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.Data;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,7 +32,7 @@ public class User {
     private String userPhoneNumber;
 
     @NotBlank(message = "alternateUsername can't be empty")
-    @Size(min = 4, max = 15)
+    @Size(min = 1, max = 30)
     private String alternateUsername;
 
     @NotBlank(message = "Select a valid status")
@@ -44,10 +41,11 @@ public class User {
     @Email(message = "Email ID should be valid")
     private String userEmail;
 
-    @NotBlank(message = "select a valid role")
     private String userRoleName;
     private List<String> userRoleNameList = new ArrayList<>();
 
+    @NotNull(message = "Select a Valid Role")
+    @Min(value = 1, message = "Select a Valid Role")
     private int userRoleId;
 
     Boolean enabled;

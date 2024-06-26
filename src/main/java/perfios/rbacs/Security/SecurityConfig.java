@@ -29,27 +29,27 @@ public class SecurityConfig {
     @Autowired
     private UserService userService;
 
-    @Autowired
-    private UserDetailsServiceImplementation myUserDetailsService;
-
-    @Autowired
-    private CustomAuthenticationProvider customAuthenticationProvider;
-
-
-    @Bean
-    public UserDetailsService userDetailsService(){
-        return myUserDetailsService;
-    }
+//    @Autowired
+//    private UserDetailsServiceImplementation myUserDetailsService;
+//
+//    @Autowired
+//    private CustomAuthenticationProvider customAuthenticationProvider;
+//
+//
+//    @Bean
+//    public UserDetailsService userDetailsService(){
+//        return myUserDetailsService;
+//    }
 
     HeaderWriterLogoutHandler clearSiteData = new HeaderWriterLogoutHandler(new ClearSiteDataHeaderWriter(ClearSiteDataHeaderWriter.Directive.COOKIES));
 
 
 
-    @Bean
-    public AuthenticationProvider authenticationProvider(){
-        RbacsApplication.printString("inside personal authentication service");
-        return customAuthenticationProvider;
-    }
+//    @Bean
+//    public AuthenticationProvider authenticationProvider(){
+//        RbacsApplication.printString("inside personal authentication service");
+//        return customAuthenticationProvider;
+//    }
 
 
     @Autowired

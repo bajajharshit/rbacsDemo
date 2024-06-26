@@ -6,6 +6,7 @@ import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageConversionException;
@@ -69,9 +70,9 @@ public class UserController {
     protected String roleIdFromRoleName(){
         if(SecurityContextHolder.getContext() == null) return null;
         String roleName = SecurityContextHolder.getContext().getAuthentication().getAuthorities().toString();
-        RbacsApplication.printString(roleName + "  " + roleName.length());
+//        RbacsApplication.printString(roleName + "  " + roleName.length());
         roleName = roleName.substring(1,roleName.length()-1);
-        RbacsApplication.printString(roleName + "  " + roleName.length());
+//        RbacsApplication.printString(roleName + "  " + roleName.length());
         String roleId  = userService.getRoleIdFromRole(roleName);
         return roleId;
     }
@@ -114,7 +115,11 @@ public class UserController {
     //this is for user dashboard (user_id, user email, user role)
     @PreAuthorize("hasAnyRole('ROLE_ADMINISTRATOR','ROLE_BANK-OFFICER')")
     @GetMapping("user/dashboard")
-    public ResponseEntity<?> getAllUsersDashboard() {
+    public ResponseEntity<?> getAllUsersDashboard(HttpServletRequest request) {
+
+        RbacsApplication.printString(request.getHeader("Authorization"));
+        RbacsApplication.printString("dashboard hit");
+        RbacsApplication.printString(request.getHeaderNames().toString());
         String permission_type = "dashboard";  //by default
         String permissionId = redisDataService.getPermissionId(permission_type);
         String roleId = roleIdFromRoleName();
@@ -143,6 +148,7 @@ public class UserController {
     @PostMapping("/user")
     public ResponseEntity<String> addNewUser(@Valid @RequestBody User user, BindingResult bindingResult) throws HttpMessageConversionException {
 //binding result is used to invoke exceptionHandler for constrainsViolationException for invalid parameters.
+        RbacsApplication.printString(user.toString());
         String result = userService.addNewUser(user);
         return ResponseEntity.ok(result);
     }
@@ -179,15 +185,26 @@ public class UserController {
         String permissionType = "user_details";
         String permissionId = redisDataService.getPermissionId(permissionType);
         String roleId = roleIdFromRoleName();
+        if(roleId == null || roleId.isEmpty()) {
+            if(request.getSession().getAttribute("role") != null){
+                String rolename = request.getSession().getAttribute("role").toString();
+                roleId = userService.getRoleIdFromRole(rolename);
+            }
+        }
         Access access = redisDataService.getPermissionAccessFromRedis(roleId,permissionId);{
-            RbacsApplication.printString(access.toString() + access.isCanView() + (access.isCanView() == false));
+//            RbacsApplication.printString(access.toString() + access.isCanView() + (access.isCanView() == false));
         }
         if(!access.isCanView()) return ResponseEntity.unprocessableEntity().body("403 FORBIDDEN : YOU ARE NOT AUTHORISED TO VIEW THIS");
-        if(!roleId.equals("1")) {
+        if(request.getSession().getAttribute("id") != null && request.getSession().getAttribute("id").toString().equals(String.valueOf(userId))){
+//            RbacsApplication.printString("-|_|_|_|_|_|_|_|_|_| here and role = " + roleId + " userid from sess = " + request.getSession().getAttribute("id").toString());
+            return ResponseEntity.ok(userService.getParticularUserById(userId));
+        }
+        if(roleId != null && !roleId.equals("1") && request.getHeader("Authorization") != null) {
             String jwt = request.getHeader("Authorization").substring(7);
             int userIdFromRequest = jwtTokenService.extractUserIdFromJwt(jwt);
             if(userIdFromRequest != userId) return ResponseEntity.unprocessableEntity().body("403 FORBIDDEN : YOU ARE NOT AUTHORISED TO VIEW THIS");
         }
+        if(request.getSession().getAttribute("id") != null && !roleId.equals("1")) return ResponseEntity.unprocessableEntity().body("403 FORBIDDEN : YOU ARE NOT AUTHORISED TO VIEW THIS");
         User user = userService.getParticularUserById(userId);
         if(user == null) return ResponseEntity.badRequest().body("THIS REQUEST DOES NOT EXIST");
         return ResponseEntity.ok(user);
@@ -198,15 +215,12 @@ public class UserController {
     @PreAuthorize("hasRole('ROLE_ADMINISTRATOR')")
     @PutMapping("user/{id}")
     public ResponseEntity<String> updateUser(@PathVariable int id, @Valid @RequestBody User user, BindingResult bindingResult) {
-        if(userService.getRoleIdFromRole("ROLE_" + user.getUserRoleName().toUpperCase()) == null){
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("ROLE_" + user.getUserRoleName().toUpperCase());
-        }
+//        RbacsApplication.printString(user.toString());
         String permissionType = "user_details";
         String permissionId = redisDataService.getPermissionId(permissionType);
         String roleId = roleIdFromRoleName();
         Access access = redisDataService.getPermissionAccessFromRedis(roleId,permissionId);
         if(access == null || !access.isCanEdit()) return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("YOU ARE UNAUTHORIZED TO PERFORM THIS OPERATION");
-        user.setUserRoleId(Integer.parseInt(userService.getRoleIdFromRole("ROLE_" + user.getUserRoleName().toUpperCase())));
         String result = userService.updateUser(user, id);
         return ResponseEntity.ok(result);
     }

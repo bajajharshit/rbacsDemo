@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageConversionException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -25,6 +26,9 @@ import perfios.rbacs.Repository.UserRepository.UserService;
 import perfios.rbacs.Security.CustomAuthenticationProvider;
 import perfios.rbacs.Security.CustomAuthenticatorProvider2;
 import perfios.rbacs.Security.SecurityConfig;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @CrossOrigin
 @RestController
@@ -54,7 +58,7 @@ public class LoginJwtController {
 
     @GetMapping("/loginjwt")
     public ModelAndView showLoginForm(Model model, HttpServletRequest request) {
-        RbacsApplication.printString("Inside login jwt");
+//        RbacsApplication.printString("Inside login jwt");
         if (request.getHeader("Authorization") == null ){
             RbacsApplication.printString("Wrong token provided!!!!!!! redirecting to Login page");
             model.addAttribute("loginPostOb", new LoginPostOb());
@@ -67,27 +71,36 @@ public class LoginJwtController {
         }
         return new ModelAndView("homepage");
     }
+//admin = eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIwOTU5NCRtb2MuZWxwbWF4ZUBlbm9yZXN1IiwiaWF0IjoxNzE5NDAzNjE2LCJleHAiOjE4OTk0MDM2MTZ9.PKmtcSSmvcg4fZp-UaEd2ZbPS3d9FhzyBhHYPlazxIuvqAGoT2sduvUVnzd6dqaCJmZSkZ58J-nezol6zKm4uQ
+//BO = eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI2Njc2NTIkbW9jLmVscG1heGVAdHRvY3NhaWxlbWEiLCJpYXQiOjE3MTk0MDM2NzYsImV4cCI6MTg5OTQwMzY3Nn0.e0doQol5JHskG_GKc6rp0Xm4X_Pva9plxTJGxYS7YOK34leAuo5H5GkXKUFkohx_2dLBusJrKI5qInVm_yEQfA
+
 
 
     @PostMapping("/loginjwt")
-    public ResponseEntity<?> loginResponseJwt( @ModelAttribute("loginPostOb") LoginPostOb loginPostOb) {
-        RbacsApplication.printString("post /loginjwt hit on pressing button");
+    public ResponseEntity<?> loginResponseJwt( @RequestBody LoginPostOb loginPostOb) {
+//        RbacsApplication.printString("post /loginjwt hit on pressing button");
         String userEmail = loginPostOb.getUserEmail();
         String userPassword = loginPostOb.getUserPassword();
-        RbacsApplication.printString("api hit and " + userEmail);
+//        RbacsApplication.printString("api hit and " + userEmail);
         boolean areParamValid = true;
         StringBuilder validationErrors = new StringBuilder();
         validationErrors.append("STATUS : 400 BAD REQUEST(INVALID CREDENTIALS)\n");
         String emailPatternMatcherExpression = "^[\\w.-]+@[a-zA-Z_-]+?\\.[a-zA-Z]{2,3}$";
-        if(userPassword.length()<8 || userPassword.length()>20) {
+        if(userPassword == null || userPassword.isEmpty() || userPassword.isBlank()){
+            validationErrors.append("Password should be between 8 to 20 characters\n");
+            areParamValid = false;
+        }else if( userPassword.length()<8 || userPassword.length()>20) {
             validationErrors.append("Password should be between 8 to 20 characters\n");
             areParamValid = false;
         }
-        if(!userEmail.matches(emailPatternMatcherExpression) ) {
+        if(userEmail == null || userEmail.isBlank() || userEmail.isEmpty()){
+            validationErrors.append("Email ID should be of form user@example.com");
+            areParamValid = false;
+        }else if (!userEmail.matches(emailPatternMatcherExpression)) {
             validationErrors.append("Email ID should be of form user@example.com");
             areParamValid = false;
         }
-        if(areParamValid == false) RbacsApplication.printString("parameter valid found");
+        if(areParamValid == false) RbacsApplication.printString("parameter Invalid found");
         if(!areParamValid) return ResponseEntity.badRequest().body(validationErrors);
 
         UsernamePasswordAuthenticationToken authenticationToken =
@@ -106,8 +119,11 @@ public class LoginJwtController {
         // Create a new HttpHeaders object
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer " + jwtToken);
-        RbacsApplication.printString(SecurityContextHolder.getContext().toString());
-        return new ResponseEntity<>(authentication.getAuthorities(), headers, HttpStatus.OK);
+//        RbacsApplication.printString(SecurityContextHolder.getContext().toString());
+        List<Object> responseList = new ArrayList<>();
+        responseList.add(authentication.getAuthorities());
+        responseList.add(jwtToken);
+        return new ResponseEntity<>(responseList, headers, HttpStatus.OK);
     }
 
 
@@ -115,6 +131,11 @@ public class LoginJwtController {
     public String logoutUsingJwt() {
         return "logout succesfully";
 
+    }
+
+    @ExceptionHandler(HttpMessageConversionException.class)
+    public ResponseEntity<String> handleHttpMessageConversionException(HttpMessageConversionException ex) {
+        return ResponseEntity.badRequest().body("INVALID DATA ENTERED, TRY AGAIN WITH CORRECT DATA");
     }
 
 }

@@ -72,9 +72,6 @@ public class AuthenticationFilterWithJwt extends OncePerRequestFilter {
         int userId = jwtTokenService.extractUserIdFromJwt(jwt);
         String userEmailId = jwtTokenService.extractUserEmailIdFromJwt(jwt);
 
-        RbacsApplication.printString("Securitycontextholder = "+SecurityContextHolder.getContext());
-        RbacsApplication.printString("userid = " + userId + " email id = " + userEmailId);
-
         if(userId != -1 && userEmailId != null && SecurityContextHolder.getContext().getAuthentication() == null){
             LoginResponse2 loginResponse2 = userService.fetchUserDetailsFromUserId2(userId ,  userEmailId);
             if(loginResponse2 == null) {
@@ -84,7 +81,6 @@ public class AuthenticationFilterWithJwt extends OncePerRequestFilter {
 
             List<GrantedAuthority> authorities = new ArrayList<>();
             String role = "ROLE_" + loginResponse2.getRoleName().toUpperCase();
-            RbacsApplication.printString("role_name" + role);
             authorities.add(new SimpleGrantedAuthority(role));
             userDetails = new User(
                     loginResponse2.getUserEmail(),

@@ -295,6 +295,7 @@ public class FileServicesImplementation implements FileServices{
 
         String homeDestination = System.getProperty("user.home");
         homeDestination = System.getenv("HOME");
+
         String filePath = homeDestination + "/Desktop/SampleFile/AllUsers/";
 
         Path path = Paths.get(filePath);

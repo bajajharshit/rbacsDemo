@@ -106,6 +106,10 @@ public class UserController {
 
 
 
+    @GetMapping("/total-user-count")
+    public int getTotalUsersInDB(){
+        return userService.getTotalUserCount();
+    }
 
     //this is for user dashboard (user_id, user email, user role)
     @PreAuthorize("hasAnyRole('ROLE_ADMINISTRATOR','ROLE_BANK-OFFICER')")
@@ -194,11 +198,15 @@ public class UserController {
     @PreAuthorize("hasRole('ROLE_ADMINISTRATOR')")
     @PutMapping("user/{id}")
     public ResponseEntity<String> updateUser(@PathVariable int id, @Valid @RequestBody User user, BindingResult bindingResult) {
+        if(userService.getRoleIdFromRole("ROLE_" + user.getUserRoleName().toUpperCase()) == null){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("ROLE_" + user.getUserRoleName().toUpperCase());
+        }
         String permissionType = "user_details";
         String permissionId = redisDataService.getPermissionId(permissionType);
         String roleId = roleIdFromRoleName();
         Access access = redisDataService.getPermissionAccessFromRedis(roleId,permissionId);
         if(access == null || !access.isCanEdit()) return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("YOU ARE UNAUTHORIZED TO PERFORM THIS OPERATION");
+        user.setUserRoleId(Integer.parseInt(userService.getRoleIdFromRole("ROLE_" + user.getUserRoleName().toUpperCase())));
         String result = userService.updateUser(user, id);
         return ResponseEntity.ok(result);
     }

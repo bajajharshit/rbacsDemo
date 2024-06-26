@@ -37,4 +37,5 @@ public interface UserService {
     List<User> findUserByDifferentFeilds(UserSearch userSearch);
     List<UserDashboard> dashboardFindUserByDifferentFeilds(UserSearch userSearch);
     List<UserDashboard> getUsersDashboardForWithPageNumber(int pageNo, int limit);
+    int getTotalUserCount();
 }

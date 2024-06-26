@@ -44,10 +44,10 @@ public class User {
     @Email(message = "Email ID should be valid")
     private String userEmail;
 
+    @NotBlank(message = "select a valid role")
     private String userRoleName;
     private List<String> userRoleNameList = new ArrayList<>();
 
-    @NotBlank(message = "select a valid role")
     private int userRoleId;
 
     Boolean enabled;

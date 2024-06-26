@@ -1,16 +1,11 @@
 package perfios.rbacs.Repository.UserRepository;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Service;
-import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.RequestBody;
 import perfios.rbacs.Model.LoginPost.LoginPostOb;
 import perfios.rbacs.Model.LoginResponse.LoginResponse;
 import perfios.rbacs.Model.LoginResponse.LoginResponse2;
@@ -19,14 +14,13 @@ import perfios.rbacs.Model.Users.UserDashboard;
 import perfios.rbacs.Model.Users.UserSearch;
 import perfios.rbacs.RbacsApplication;
 
-import javax.print.DocFlavor;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
-import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 public class UserServiceImplementation implements UserService{
@@ -138,6 +132,22 @@ public class UserServiceImplementation implements UserService{
     public String getRoleIdFromRole(String roleName) {
         String roleId = getRoleIdFromRole.get(roleName);
         return roleId;
+    }
+
+
+    @Override
+    public int getTotalUserCount() {
+        String totalUsersCountQuery = "select count(*) from user_details;";
+        AtomicInteger count = new AtomicInteger();
+        try {
+            namedParameterJdbcTemplate.query(totalUsersCountQuery, rs -> {
+                count.set(rs.getInt("count(*)"));
+            });
+            return Integer.parseInt(String.valueOf(count));
+        }catch (DataAccessException e){
+//            e.printStackTrace();
+        }
+        return -1;
     }
 
     public String appendConditions(UserSearch userSearch){

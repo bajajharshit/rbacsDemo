@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import perfios.rbacs.Model.Users.UserSearch;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
@@ -13,4 +14,5 @@ public interface FileServices {
     String getUserDetailsInXlsxFileBasedOnSearch(UserSearch userSearch);
     List<String > addUsersFromUploadedFile(MultipartFile multipartFile);
     public byte[] getUserDetailsExcelFileInOtherSystem() throws IOException;
+    File generateExcelFile();
 }

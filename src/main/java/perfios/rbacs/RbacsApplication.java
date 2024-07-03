@@ -3,6 +3,7 @@ package perfios.rbacs;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.ApplicationContext;
 import perfios.rbacs.Model.LoginResponse.LoginResponse;
 import perfios.rbacs.Model.Users.User;
 import perfios.rbacs.Repository.UserRepository.UserService;
@@ -14,9 +15,10 @@ import java.util.Set;
 public class RbacsApplication {
 
 	public static void main(String[] args) {
-		System.out.println("this is working fine");
 		SpringApplication.run(RbacsApplication.class, args);
+		System.out.println("this is working fine");
 	}
+
 
 
 

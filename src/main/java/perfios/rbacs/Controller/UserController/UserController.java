@@ -115,11 +115,7 @@ public class UserController {
     //this is for user dashboard (user_id, user email, user role)
     @PreAuthorize("hasAnyRole('ROLE_ADMINISTRATOR','ROLE_BANK-OFFICER')")
     @GetMapping("user/dashboard")
-    public ResponseEntity<?> getAllUsersDashboard(HttpServletRequest request) {
-
-        RbacsApplication.printString(request.getHeader("Authorization"));
-        RbacsApplication.printString("dashboard hit");
-        RbacsApplication.printString(request.getHeaderNames().toString());
+    public ResponseEntity<?> getAllUsersDashboard() {
         String permission_type = "dashboard";  //by default
         String permissionId = redisDataService.getPermissionId(permission_type);
         String roleId = roleIdFromRoleName();

@@ -1,6 +1,8 @@
 package perfios.rbacs.Controller.RoleController;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,7 +19,7 @@ import perfios.rbacs.Repository.RoleRepository.RoleService;
 import java.sql.SQLException;
 import java.util.List;
 
-@CrossOrigin
+@CrossOrigin(origins = "http://dev.appsmith.com:3000")
 @RestController
 public class RoleController {
 
@@ -139,7 +141,9 @@ public class RoleController {
 
     //this is to display role details (role_id, role_name, role_status)
     @GetMapping("/roles")
-    public List<Role> getAllRoles(){
+    public List<Role> getAllRoles(HttpRequest request){
+        RbacsApplication.printString("/roles hit from ip = " + request.getURI());
+
         return roleService.getAllRoles();
     }
 

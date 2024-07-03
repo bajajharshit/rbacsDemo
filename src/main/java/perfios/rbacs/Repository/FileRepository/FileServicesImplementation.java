@@ -241,6 +241,14 @@ public class FileServicesImplementation implements FileServices{
     }
 
 
+
+
+
+
+
+
+
+
     public String downloadUsersInXlsxFile(List<User> allUsers){
 
 
@@ -373,6 +381,99 @@ public class FileServicesImplementation implements FileServices{
         return userMap;
     }
 
+
+
+
+    //methord to send file in other person's system;
+    @Override
+    public File generateExcelFile(){
+        Workbook workbook  = new XSSFWorkbook();
+        Sheet sheet  = workbook.createSheet("All Users");
+
+
+        Row header = sheet.createRow(0);
+        CellStyle headerStyle = workbook.createCellStyle();
+        headerStyle.setFillBackgroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+
+        //creating headers
+        List<String> headerList = new ArrayList<>();
+        headerList.add("User Id");
+        headerList.add("User First Name");
+        headerList.add("User Last Name");
+        headerList.add("User Password");
+        headerList.add("User Phone Number");
+        headerList.add("Alternate Username");
+        headerList.add("User Status");
+        headerList.add("User Email");
+        headerList.add("User Role Name");
+        headerList.add("User Role Id");
+        headerList.add("Enabled");
+        headerList.add("Is Super Admin");
+        headerList.add("Should Loan Auto Apply");
+
+
+
+        int columnCount = 0;
+        for(String headerCellValue : headerList){
+            sheet.setColumnWidth(columnCount, 6000);
+            Cell headerCell = header.createCell(columnCount++);
+            headerCell.setCellStyle(headerStyle);
+            headerCell.setCellValue(headerCellValue);
+        }
+
+
+        int rowCount = 1;
+
+        List<User> allUsers = userService.getAllUsers();
+
+
+        for(User user : allUsers){
+            Row userRow = sheet.createRow(rowCount++);
+            Map<Integer, Object> userMap = fillUserMap(user);
+            columnCount = 0;
+            while(userMap.containsKey(columnCount)){
+                Cell userDataCell = userRow.createCell(columnCount);
+                userDataCell.setCellValue(String.valueOf(userMap.get(columnCount)));
+                columnCount++;
+            }
+
+        }
+
+//        String homeDestination = System.getProperty("user.home");
+//        homeDestination = System.getenv("HOME");
+//
+//        String filePath = homeDestination + "/Desktop/SampleFile/AllUsers/";
+//
+//        Path path = Paths.get(filePath);
+
+// Check if directory exists, create it if not
+//        if (!Files.exists(path)) {
+//            try {
+//                Files.createDirectories(path);
+//                System.out.println("Directory created: " + path);
+//            } catch (Exception e) {
+//                System.err.println("Failed to create directory: " + path);
+//                e.printStackTrace();
+//            }
+//        }
+
+
+//        String fileName = "AllUserFile" + System.currentTimeMillis()/10000 + ".xlsx";
+//        File file = new File(filePath ,fileName);
+        String fileName = "AllUserFile" + System.currentTimeMillis()/10000 + ".xlsx";
+        File file = new File(fileName);
+
+
+        try {
+            FileOutputStream outputStream = new FileOutputStream(file);
+            workbook.write(outputStream);
+            workbook.close();
+        }catch (IOException e){
+            return  null;
+        }
+
+        return file;
+    }
 
 
     @ExceptionHandler(RuntimeException.class)

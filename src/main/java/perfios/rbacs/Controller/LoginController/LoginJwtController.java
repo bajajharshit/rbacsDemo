@@ -77,7 +77,9 @@ public class LoginJwtController {
 
 
     @PostMapping("/loginjwt")
-    public ResponseEntity<?> loginResponseJwt( @RequestBody LoginPostOb loginPostOb) {
+    public ResponseEntity<?> loginResponseJwt( HttpServletRequest request, @RequestBody LoginPostOb loginPostOb) {
+        RbacsApplication.printString(request.toString());
+
 //        RbacsApplication.printString("post /loginjwt hit on pressing button");
         String userEmail = loginPostOb.getUserEmail();
         String userPassword = loginPostOb.getUserPassword();
@@ -120,10 +122,7 @@ public class LoginJwtController {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer " + jwtToken);
 //        RbacsApplication.printString(SecurityContextHolder.getContext().toString());
-        List<Object> responseList = new ArrayList<>();
-        responseList.add(authentication.getAuthorities());
-        responseList.add(jwtToken);
-        return new ResponseEntity<>(responseList, headers, HttpStatus.OK);
+        return new ResponseEntity<>(authentication.getAuthorities(), headers, HttpStatus.OK);
     }
 
 

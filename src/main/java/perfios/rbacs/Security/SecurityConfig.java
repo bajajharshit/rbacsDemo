@@ -61,23 +61,7 @@ public class SecurityConfig {
 
         http
                 .csrf(AbstractHttpConfigurer::disable)
-//                .authorizeHttpRequests(authorize ->
-//                        authorize
-//                                .requestMatchers(HttpMethod.POST, "/login").permitAll()
-//                                .requestMatchers(HttpMethod.POST,"loginpostman").permitAll()
-//                                .requestMatchers(HttpMethod.GET, "/login").permitAll()
-//                                .requestMatchers(HttpMethod.GET, "/homepage").permitAll()
-//                                .requestMatchers(HttpMethod.GET, "/userhome").permitAll()
-//                                .requestMatchers(HttpMethod.GET,"/loginjwt").permitAll()
-//                                .requestMatchers(HttpMethod.POST,"/loginjwt").permitAll()
-//                                .requestMatchers(HttpMethod.GET,"/logoutjwt").permitAll()
-//                                .requestMatchers(HttpMethod.GET,"/checking").permitAll()
-//                                .requestMatchers(HttpMethod.POST, "/user").hasAuthority("1") //createUser
-//                                .requestMatchers(HttpMethod.POST, "/user/{id}").hasAuthority("3") //UpdateUserWith{id}
-//                                .requestMatchers(HttpMethod.GET, "/user/{id}").hasAnyAuthority( "5","7")  //5-> viewSelf & 7->ViewAll
-//                                .requestMatchers(HttpMethod.GET, "/user").hasRole("ADMINISTRATOR")  //canViewListOfAllUsers
-//                                .anyRequest().authenticated()
-//                )
+
                 .logout(logout ->
                         logout
 //                                .permitAll()

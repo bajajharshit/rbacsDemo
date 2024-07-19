@@ -76,7 +76,7 @@ public class FileServicesImplementation implements FileServices{
                 User user = new User();
                 try {
                     Boolean check = user.setFeildsFromMapForCsvFile(record.next().toMap());
-//                    RbacsApplication.printString(user.toString());
+                    RbacsApplication.printString(user.toString());
                     if(check) verificationList.add(user.getUserEmail() + " -> " + userService.addNewUser(user));
                     else verificationList.add(user.getUserEmail() + " -> " + "INVALID VALUES PASSED");
 

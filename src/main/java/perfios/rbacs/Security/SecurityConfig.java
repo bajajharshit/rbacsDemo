@@ -26,12 +26,30 @@ import perfios.rbacs.Repository.UserRepository.UserService;
         jsr250Enabled = true)
 public class SecurityConfig {
 
+    @Autowired
+    private UserService userService;
 
-
+//    @Autowired
+//    private UserDetailsServiceImplementation myUserDetailsService;
+//
+//    @Autowired
+//    private CustomAuthenticationProvider customAuthenticationProvider;
+//
+//
+//    @Bean
+//    public UserDetailsService userDetailsService(){
+//        return myUserDetailsService;
+//    }
 
     HeaderWriterLogoutHandler clearSiteData = new HeaderWriterLogoutHandler(new ClearSiteDataHeaderWriter(ClearSiteDataHeaderWriter.Directive.COOKIES));
 
 
+
+//    @Bean
+//    public AuthenticationProvider authenticationProvider(){
+//        RbacsApplication.printString("inside personal authentication service");
+//        return customAuthenticationProvider;
+//    }
 
 
     @Autowired
@@ -43,8 +61,26 @@ public class SecurityConfig {
 
         http
                 .csrf(AbstractHttpConfigurer::disable)
+//                .authorizeHttpRequests(authorize ->
+//                        authorize
+//                                .requestMatchers(HttpMethod.POST, "/login").permitAll()
+//                                .requestMatchers(HttpMethod.POST,"loginpostman").permitAll()
+//                                .requestMatchers(HttpMethod.GET, "/login").permitAll()
+//                                .requestMatchers(HttpMethod.GET, "/homepage").permitAll()
+//                                .requestMatchers(HttpMethod.GET, "/userhome").permitAll()
+//                                .requestMatchers(HttpMethod.GET,"/loginjwt").permitAll()
+//                                .requestMatchers(HttpMethod.POST,"/loginjwt").permitAll()
+//                                .requestMatchers(HttpMethod.GET,"/logoutjwt").permitAll()
+//                                .requestMatchers(HttpMethod.GET,"/checking").permitAll()
+//                                .requestMatchers(HttpMethod.POST, "/user").hasAuthority("1") //createUser
+//                                .requestMatchers(HttpMethod.POST, "/user/{id}").hasAuthority("3") //UpdateUserWith{id}
+//                                .requestMatchers(HttpMethod.GET, "/user/{id}").hasAnyAuthority( "5","7")  //5-> viewSelf & 7->ViewAll
+//                                .requestMatchers(HttpMethod.GET, "/user").hasRole("ADMINISTRATOR")  //canViewListOfAllUsers
+//                                .anyRequest().authenticated()
+//                )
                 .logout(logout ->
                         logout
+//                                .permitAll()
                                 .addLogoutHandler(clearSiteData)
                                 .logoutUrl("/logout")
                                 .clearAuthentication(true)
